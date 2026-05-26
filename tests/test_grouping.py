@@ -99,9 +99,7 @@ def test_parse_rule_strings_merges_duplicates() -> None:
 
 
 def test_parse_rule_strings_trims_whitespace() -> None:
-    assert parse_rule_strings(["  Sales = Sales* , SO*  "]) == {
-        "Sales": ["Sales*", "SO*"]
-    }
+    assert parse_rule_strings(["  Sales = Sales* , SO*  "]) == {"Sales": ["Sales*", "SO*"]}
 
 
 @pytest.mark.parametrize("bad", ["=foo", "Sales=", "Sales", "Sales=,,"])

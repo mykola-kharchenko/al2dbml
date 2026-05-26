@@ -58,7 +58,7 @@ def test_conditional_relation_note_strips_where_keyword() -> None:
     dbml = _build()
     assert 'Condition: ("Blocked"=CONST(" "))' in dbml
     assert "WHERE(WHERE" not in dbml
-    assert "WHERE(\"Blocked\"" not in dbml  # raw WHERE form should not survive
+    assert 'WHERE("Blocked"' not in dbml  # raw WHERE form should not survive
 
 
 def test_merge_extensions_false_emits_stub_table() -> None:

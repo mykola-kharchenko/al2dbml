@@ -79,9 +79,7 @@ def main(
     )
 
     try:
-        generator = Generator.from_app(
-            app, merge_extensions=merge_extensions, grouping=grouping
-        )
+        generator = Generator.from_app(app, merge_extensions=merge_extensions, grouping=grouping)
         rendered = generator.dbml()
     except FileNotFoundError as exc:
         raise click.ClickException(str(exc)) from exc

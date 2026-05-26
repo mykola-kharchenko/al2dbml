@@ -58,10 +58,7 @@ def sample_symbols() -> dict[str, Any]:
                         "Properties": [
                             {
                                 "Name": "TableRelation",
-                                "Value": (
-                                    'Customer."No." '
-                                    'WHERE("Blocked"=CONST(" "))'
-                                ),
+                                "Value": ('Customer."No." WHERE("Blocked"=CONST(" "))'),
                             }
                         ],
                     },
@@ -94,9 +91,7 @@ def sample_symbols() -> dict[str, Any]:
                         ],
                     },
                 ],
-                "Keys": [
-                    {"FieldNames": ["Document Type", "Document No.", "Line No."]}
-                ],
+                "Keys": [{"FieldNames": ["Document Type", "Document No.", "Line No."]}],
             },
             {
                 "Name": "Purchase Header",
@@ -122,9 +117,7 @@ def sample_symbols() -> dict[str, Any]:
                     },
                     {"Name": "Line No.", "TypeDefinition": _integer()},
                 ],
-                "Keys": [
-                    {"FieldNames": ["Document Type", "Document No.", "Line No."]}
-                ],
+                "Keys": [{"FieldNames": ["Document Type", "Document No.", "Line No."]}],
             },
         ],
         "TableExtensions": [

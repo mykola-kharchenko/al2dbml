@@ -56,6 +56,5 @@ def _find_symbol_member(archive: zipfile.ZipFile) -> str:
             return name
     sample = ", ".join(archive.namelist()[:10])
     raise KeyError(
-        "SymbolReference.json not found in AL package. "
-        f"First entries in archive: [{sample}]"
+        f"SymbolReference.json not found in AL package. First entries in archive: [{sample}]"
     )

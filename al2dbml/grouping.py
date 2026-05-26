@@ -45,9 +45,7 @@ class GroupingConfig:
         return None
 
 
-def build_table_groups(
-    tables: Iterable[_NamedTable], config: GroupingConfig
-) -> list[TableGroup]:
+def build_table_groups(tables: Iterable[_NamedTable], config: GroupingConfig) -> list[TableGroup]:
     """Bucket ``tables`` by group name and return ``TableGroup`` objects sorted by name.
 
     Buckets smaller than ``config.min_group_size`` are dropped entirely. Returns an empty
@@ -93,8 +91,6 @@ def parse_rule_strings(entries: Iterable[str]) -> dict[str, list[str]]:
 
         patterns = [p.strip() for p in patterns_raw.split(",") if p.strip()]
         if not patterns:
-            raise ValueError(
-                f"Invalid --group value {entry!r}: at least one pattern is required"
-            )
+            raise ValueError(f"Invalid --group value {entry!r}: at least one pattern is required")
         rules.setdefault(name, []).extend(patterns)
     return rules
