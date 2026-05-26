@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import re
 from typing import Any
+
+_INLINE_LEN = re.compile(r"^([A-Za-z]+)\[(\d+)\]$")
 
 _SIMPLE_TYPES: dict[str, str] = {
     "integer": "int",
@@ -35,6 +38,13 @@ def map_al_type(field: dict[str, Any]) -> str:
     """
     raw_type = (field.get("TypeDefinition") or {}).get("Name") or field.get("Type") or ""
     type_name = str(raw_type).strip()
+
+    # AL sometimes stores the length inline in the type name, e.g. "Text[50]" or "Code[20]",
+    # instead of providing it via TypeArguments. Detect that shape up front and emit varchar(N).
+    inline = _INLINE_LEN.match(type_name)
+    if inline and inline.group(1).lower() in ("code", "text"):
+        return f"varchar({inline.group(2)})"
+
     key = type_name.lower()
 
     if key in ("code", "text"):

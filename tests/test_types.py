@@ -69,6 +69,26 @@ def test_empty_field_returns_varchar() -> None:
     assert map_al_type({}) == "varchar"
 
 
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("Text[50]", "varchar(50)"),
+        ("Code[20]", "varchar(20)"),
+        ("Text[1024]", "varchar(1024)"),
+        ("TEXT[10]", "varchar(10)"),
+        ("code[5]", "varchar(5)"),
+    ],
+)
+def test_inline_length_type_name(raw: str, expected: str) -> None:
+    # AL sometimes encodes the length inside the type name itself instead of TypeArguments.
+    assert map_al_type({"TypeDefinition": {"Name": raw}}) == expected
+
+
+def test_inline_length_only_applies_to_string_types() -> None:
+    # An unknown bracketed type still falls through to the permissive lowercase fallback.
+    assert map_al_type({"TypeDefinition": {"Name": "Foo[10]"}}) == "foo[10]"
+
+
 def test_first_int_helper() -> None:
     assert _first_int([10]) == 10
     assert _first_int([None, "5", 7]) == 5
