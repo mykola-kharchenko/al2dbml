@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "al2dbml"
+version = "0.1.0"
+description = "Convert compiled Microsoft Dynamics 365 Business Central AL packages (.app) into DBML schemas."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Mykola Kharchenko", email = "mykola.kharchenko@outlook.com" },
+]
+keywords = ["dbml", "business-central", "dynamics-365", "al", "dbdiagram"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Code Generators",
+]
+dependencies = [
+    "click>=8.1",
+    "pydbml>=1.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+al2dbml = "al2dbml.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/kharmyko/al2dbml"
+Issues = "https://github.com/kharmyko/al2dbml/issues"
+
+[tool.setuptools.packages.find]
+include = ["al2dbml*"]
+exclude = ["tests*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
