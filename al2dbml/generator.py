@@ -43,6 +43,7 @@ class Generator:
     symbols: dict[str, Any]
     merge_extensions: bool = True
     grouping: GroupingConfig = field(default_factory=GroupingConfig)
+    schema: str = "dbo"
     db: Database = field(default_factory=Database)
 
     _enums: dict[str, Enum] = field(init=False, default_factory=dict)
@@ -116,7 +117,11 @@ class Generator:
         name = table_def["Name"]
         props = self._properties(table_def.get("Properties"))
         caption = props.get("Caption")
-        table = Table(name=name, note=caption) if caption else Table(name=name)
+        table = (
+            Table(name=name, schema=self.schema, note=caption)
+            if caption
+            else Table(name=name, schema=self.schema)
+        )
 
         keys = table_def.get("Keys") or []
         pk_names: set[str] = set()
@@ -182,7 +187,11 @@ class Generator:
                 continue
             table = self._tables.get(target)
             if table is None:
-                table = Table(name=target, note=f"Stub for cross-package target {target}")
+                table = Table(
+                    name=target,
+                    schema=self.schema,
+                    note=f"Stub for cross-package target {target}",
+                )
                 self._tables[target] = table
                 self.db.add(table)
             for f in ext.get("Fields") or []:
@@ -197,7 +206,7 @@ class Generator:
             if not target:
                 continue
             stub_name = f"{target} (Extension)"
-            stub = Table(name=stub_name, note=f"Extension of {target}")
+            stub = Table(name=stub_name, schema=self.schema, note=f"Extension of {target}")
             for f in ext.get("Fields") or []:
                 col = self._make_column(stub_name, f, set())
                 if col is not None:

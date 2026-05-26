@@ -23,20 +23,20 @@ def test_customer_table_contains_merged_extension_field() -> None:
     dbml = _build()
     # The extension field appears as a column on the base Customer table
     assert '"Loyalty Points" int' in dbml
-    # And the Customer table block exists
-    assert 'Table "Customer"' in dbml
+    # And the Customer table block exists (schema-qualified, dbo by default)
+    assert 'Table "dbo"."Customer"' in dbml
 
 
 def test_sales_header_references_customer_no() -> None:
     dbml = _build()
     # pydbml emits each reference as a ``Ref { ... }`` block
     assert "Ref {" in dbml
-    assert '"Sales Header"."Sell-to Customer No." > "Customer"."No."' in dbml
+    assert '"dbo"."Sales Header"."Sell-to Customer No." > "dbo"."Customer"."No."' in dbml
 
 
 def test_sales_line_references_sales_header_no() -> None:
     dbml = _build()
-    assert '"Sales Line"."Document No." > "Sales Header"."No."' in dbml
+    assert '"dbo"."Sales Line"."Document No." > "dbo"."Sales Header"."No."' in dbml
 
 
 def test_table_groups_emitted_for_sales_and_purchase() -> None:
@@ -63,10 +63,10 @@ def test_conditional_relation_note_strips_where_keyword() -> None:
 
 def test_merge_extensions_false_emits_stub_table() -> None:
     dbml = _build(merge_extensions=False)
-    assert 'Table "Customer (Extension)"' in dbml
+    assert 'Table "dbo"."Customer (Extension)"' in dbml
     assert '"Loyalty Points"' in dbml
     # The base Customer table should not have Loyalty Points
-    customer_block_start = dbml.index('Table "Customer" ')
+    customer_block_start = dbml.index('Table "dbo"."Customer" ')
     customer_block_end = dbml.index("}", customer_block_start)
     customer_block = dbml[customer_block_start:customer_block_end]
     assert "Loyalty Points" not in customer_block
@@ -145,3 +145,22 @@ def test_dbml_is_idempotent() -> None:
     first = gen.dbml()
     second = gen.dbml()
     assert first == second
+
+
+def test_default_schema_is_dbo() -> None:
+    gen = Generator(symbols=sample_symbols())
+    gen.build()
+    for name in ("Customer", "Sales Header", "Sales Line"):
+        assert gen._tables[name].schema == "dbo"
+
+
+def test_schema_override_is_respected() -> None:
+    gen = Generator(symbols=sample_symbols(), schema="custom")
+    gen.build()
+    assert gen._tables["Customer"].schema == "custom"
+
+
+def test_extension_stub_carries_configured_schema() -> None:
+    gen = Generator(symbols=sample_symbols(), merge_extensions=False, schema="dbo")
+    gen.build()
+    assert gen._tables["Customer (Extension)"].schema == "dbo"

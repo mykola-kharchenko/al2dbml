@@ -40,7 +40,7 @@ def test_output_to_file_prints_to_stderr(tmp_path: Path) -> None:
     assert result.stdout == ""
     assert f"wrote {out}" in result.stderr
     body = out.read_text(encoding="utf-8")
-    assert 'Table "Customer"' in body
+    assert 'Table "dbo"."Customer"' in body
 
 
 def test_default_output_goes_to_stdout(tmp_path: Path) -> None:
@@ -74,7 +74,7 @@ def test_no_merge_extensions(tmp_path: Path) -> None:
     runner = CliRunner()
     result = runner.invoke(main, [str(app), "--no-merge-extensions"])
     assert result.exit_code == 0
-    assert 'Table "Customer (Extension)"' in result.stdout
+    assert 'Table "dbo"."Customer (Extension)"' in result.stdout
 
 
 def test_invalid_group_rule_exits_nonzero(tmp_path: Path) -> None:
