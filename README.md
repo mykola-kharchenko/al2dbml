@@ -6,47 +6,38 @@
 
 Python 3.10+ is required. The runtime depends only on [`click`](https://click.palletsprojects.com/) and [`pydbml`](https://github.com/Vanderhoof/PyDBML).
 
-### With pipx (recommended for a global CLI)
+### Recommended: `uv tool install`
 
-[`pipx`](https://pipx.pypa.io/) installs CLI tools into isolated environments and puts the entry point on your `PATH`, so `al2dbml` is available everywhere without polluting your system Python.
-
-```bash
-# Fedora / RHEL / CentOS
-sudo dnf install pipx
-pipx ensurepath
-
-pipx install al2dbml
-```
-
-```bash
-# macOS (Homebrew)
-brew install pipx
-pipx ensurepath
-
-pipx install al2dbml
-```
-
-```bash
-# Debian / Ubuntu
-sudo apt install pipx
-pipx ensurepath
-
-pipx install al2dbml
-```
-
-Upgrade later with `pipx upgrade al2dbml`, uninstall with `pipx uninstall al2dbml`.
-
-### With uv
-
-If you already use [`uv`](https://docs.astral.sh/uv/), its tool runner does the same job:
+[`uv`](https://docs.astral.sh/uv/) installs CLI tools into isolated environments and puts the entry point on your `PATH`, so `al2dbml` is available globally without touching your system Python.
 
 ```bash
 uv tool install al2dbml
 ```
 
-### With plain pip
+If you don't already have `uv`:
 
-Works inside an activated virtualenv, or as `pip install --user al2dbml` for a user-local install. On modern distros that mark system Python as externally-managed (PEP 668), prefer pipx instead.
+```bash
+# Fedora / RHEL / CentOS
+sudo dnf install uv
+
+# macOS (Homebrew)
+brew install uv
+
+# Anywhere (standalone installer)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Upgrade later with `uv tool upgrade al2dbml`, uninstall with `uv tool uninstall al2dbml`.
+
+### Alternative: pipx
+
+```bash
+pipx install al2dbml
+```
+
+### Alternative: plain pip
+
+Works inside an activated virtualenv. On modern distros that mark system Python as externally-managed (PEP 668), prefer `uv tool` or `pipx` instead.
 
 ```bash
 pip install al2dbml
