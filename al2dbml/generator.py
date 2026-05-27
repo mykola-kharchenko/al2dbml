@@ -127,17 +127,36 @@ class Generator:
             "groups": len(self.db.table_groups),
         }
 
+    @staticmethod
+    def _enum_item_name(raw: Any) -> str | None:
+        """Coerce an AL enum value name into something DBML can render.
+
+        AL's ``Enum`` literals are often named with a literal space (``" "``) to
+        represent the default/blank slot, which DBML accepts as a quoted item. An
+        empty string (``""``) however breaks DBML's parser; substitute a single
+        space so the value still appears in the diagram in its expected position.
+        """
+        if raw is None:
+            return None
+        text = str(raw)
+        if text == "":
+            return " "
+        return text
+
     def _build_enums(self) -> None:
         for entry in self.symbols.get("EnumTypes") or []:
             name = entry.get("Name")
             if not name:
                 continue
             items_raw = entry.get("Values") or entry.get("Items") or []
-            items = [
-                EnumItem(name=str(v["Name"]))
-                for v in items_raw
-                if isinstance(v, dict) and v.get("Name") is not None
-            ]
+            items: list[EnumItem] = []
+            for v in items_raw:
+                if not isinstance(v, dict):
+                    continue
+                item_name = self._enum_item_name(v.get("Name"))
+                if item_name is None:
+                    continue
+                items.append(EnumItem(name=item_name))
             if not items:
                 continue
             enum_obj = Enum(name=name, items=items)
@@ -151,8 +170,12 @@ class Generator:
             if enum_obj is None:
                 continue
             for v in ext.get("Values") or ext.get("Items") or []:
-                if isinstance(v, dict) and v.get("Name") is not None:
-                    enum_obj.items.append(EnumItem(name=str(v["Name"])))
+                if not isinstance(v, dict):
+                    continue
+                item_name = self._enum_item_name(v.get("Name"))
+                if item_name is None:
+                    continue
+                enum_obj.items.append(EnumItem(name=item_name))
 
     def _build_tables(self) -> None:
         for table_def in self.symbols.get("Tables") or []:

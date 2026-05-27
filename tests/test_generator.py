@@ -371,6 +371,55 @@ def test_ref_to_filtered_target_degrades_to_note() -> None:
     assert "cross-package" in dbml.lower()
 
 
+def test_empty_enum_value_substituted_with_single_space() -> None:
+    # AL sometimes encodes the default/blank slot as "" which breaks DBML's
+    # parser. We substitute a single space so the slot still appears.
+    symbols = {
+        "EnumTypes": [
+            {
+                "Name": "Blocked",
+                "Values": [
+                    {"Name": ""},
+                    {"Name": "Ship"},
+                    {"Name": "All"},
+                ],
+            }
+        ]
+    }
+    gen = Generator(symbols=symbols)
+    gen.build()
+    item_names = [i.name for i in gen._enums["Blocked"].items]
+    assert item_names == [" ", "Ship", "All"]
+
+
+def test_single_space_enum_value_passes_through() -> None:
+    # The other direction: an explicit " " value is preserved as-is.
+    symbols = {
+        "EnumTypes": [
+            {
+                "Name": "Type",
+                "Values": [{"Name": " "}, {"Name": "Item"}],
+            }
+        ]
+    }
+    gen = Generator(symbols=symbols)
+    gen.build()
+    item_names = [i.name for i in gen._enums["Type"].items]
+    assert item_names == [" ", "Item"]
+
+
+def test_enum_extension_empty_value_also_substituted() -> None:
+    # Same rule applies to EnumExtension values.
+    symbols = {
+        "EnumTypes": [{"Name": "E", "Values": [{"Name": "A"}]}],
+        "EnumExtensionTypes": [{"TargetObject": "E", "Values": [{"Name": ""}, {"Name": "B"}]}],
+    }
+    gen = Generator(symbols=symbols)
+    gen.build()
+    item_names = [i.name for i in gen._enums["E"].items]
+    assert item_names == ["A", " ", "B"]
+
+
 def test_filter_drops_tables_from_groups() -> None:
     gen = Generator(symbols=sample_symbols(), excludes=["Sales*"])
     dbml = gen.dbml()
