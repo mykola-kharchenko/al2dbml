@@ -300,7 +300,12 @@ class Generator:
                         piece += f" where `{br_where}`"
                     branch_parts.append(piece)
                 if branch_parts:
-                    notes_parts.append("**Conditional reference:** " + " • ".join(branch_parts))
+                    # HTML <br> renders as a visible line break in dbdiagram/
+                    # dbdocs Markdown without triggering pydbml's multi-line
+                    # indent bug; one branch per visual line is much more
+                    # readable than the 6-branch one-liners on real BC fields.
+                    bullets = "<br>".join(f"• {p}" for p in branch_parts)
+                    notes_parts.append(f"**Conditional reference:**<br>{bullets}")
             else:
                 target_table, target_field, condition = self._parse_relation_string(relation)
                 if target_table:
@@ -317,12 +322,11 @@ class Generator:
                         notes_parts.append(f"**Condition:** `{condition}`")
 
         if notes_parts:
-            # Single-line note: pydbml's table renderer indents every line of a
-            # multi-line note by 4 spaces (via textwrap.indent on the column
-            # block), which Markdown then interprets as a code block — killing
-            # bold and bullet rendering. Keep everything on one physical line
-            # with em-dash section separators so Markdown sees a clean string.
-            col.note = Note(" — ".join(notes_parts))
+            # Single physical line (avoids pydbml's textwrap.indent breaking
+            # Markdown inside multi-line [note: '''...''']); '<br><br>' renders
+            # as a paragraph-style gap in dbdiagram/dbdocs Markdown so sections
+            # (caption / condition / references) look visually separated.
+            col.note = Note("<br><br>".join(notes_parts))
         return col
 
     def _merge_table_extensions(self) -> None:
@@ -366,6 +370,10 @@ class Generator:
         # point two branches at the same target. pydbml rejects duplicate Refs, so we
         # dedupe by (source_col id, target_col id) before adding.
         seen: set[tuple[int, int]] = set()
+        # Cross-package and missing-target notes are append-only; dedupe them per
+        # source column so a 6-branch IF/ELSE all pointing at the same missing
+        # target doesn't produce 6 identical 'References X (cross-package)' notes.
+        noted_targets: dict[int, set[str]] = {}
         for ref in self._pending_refs:
             source_col = self._columns.get((ref.source_table, ref.source_field))
             if source_col is None:
@@ -378,7 +386,11 @@ class Generator:
                     if ref.target_field
                     else f"`{ref.target_table}`"
                 )
-                self._append_note(source_col, f"**References** {target_label} (cross-package)")
+                col_noted = noted_targets.setdefault(id(source_col), set())
+                key_label = f"cross-package:{target_label}"
+                if key_label not in col_noted:
+                    self._append_note(source_col, f"**References** {target_label} (cross-package)")
+                    col_noted.add(key_label)
                 continue
 
             target_col = None
@@ -392,7 +404,11 @@ class Generator:
                         if ref.target_field
                         else f"`{ref.target_table}`"
                     )
-                    self._append_note(source_col, f"**References** {target_label}")
+                    col_noted = noted_targets.setdefault(id(source_col), set())
+                    key_label = f"pkless:{target_label}"
+                    if key_label not in col_noted:
+                        self._append_note(source_col, f"**References** {target_label}")
+                        col_noted.add(key_label)
                     continue
                 target_col = pk_cols[0]
 
@@ -455,9 +471,10 @@ class Generator:
     @staticmethod
     def _append_note(col: Column, line: str) -> None:
         existing = col.note.text if col.note else ""
-        # Single-line, em-dash separated (see note in _make_column on why we
-        # avoid multi-line text: pydbml's textwrap.indent breaks Markdown).
-        col.note = Note(f"{existing} — {line}" if existing else line)
+        # '<br><br>' renders as a paragraph gap in dbdiagram/dbdocs Markdown;
+        # plain '\n' breaks because pydbml's textwrap.indent prepends 4 spaces
+        # to continuation lines, which Markdown then treats as a code block.
+        col.note = Note(f"{existing}<br><br>{line}" if existing else line)
 
     @staticmethod
     def _properties(raw: Any) -> dict[str, Any]:

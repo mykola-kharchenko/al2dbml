@@ -81,15 +81,50 @@ def test_cross_package_reference_does_not_crash_and_is_noted() -> None:
     assert '**References** `Vendor."No."` (cross-package)' in dbml
 
 
-def test_if_else_branches_render_inline_with_bullets() -> None:
+def test_if_else_branches_render_with_html_line_breaks() -> None:
     dbml = _build()
-    # IF/ELSE branches are joined on a single line with U+2022 separators
-    # so pydbml's multi-line indentation can't break the Markdown.
+    # IF/ELSE branches each go on their own visual line via <br>; dbdiagram
+    # and dbdocs render that as a real line break while pydbml's textwrap
+    # indent (which would break a real \n) doesn't touch a single-line note.
     assert (
-        "**Conditional reference:** "
-        '`IF (Type=CONST(Item))` → `Item."No."` • '
-        '`IF (Type=CONST(Resource))` → `Resource."No."`'
+        "**Conditional reference:**<br>"
+        '• `IF (Type=CONST(Item))` → `Item."No."`<br>'
+        '• `IF (Type=CONST(Resource))` → `Resource."No."`'
     ) in dbml
+
+
+def test_cross_package_references_are_deduped_per_column() -> None:
+    # A multi-branch IF/ELSE whose branches all point to the SAME missing
+    # target should leave one cross-package note, not N. Real example from
+    # Base Application: a 6-branch IF chain all resolving to 'Bin Content'.
+    symbols = {
+        "Tables": [
+            {
+                "Name": "S",
+                "Fields": [
+                    {
+                        "Name": "ref",
+                        "TypeDefinition": {"Name": "Integer"},
+                        "Properties": [
+                            {
+                                "Name": "TableRelation",
+                                "Value": (
+                                    'IF (a = const(1)) Missing."x" '
+                                    'ELSE IF (a = const(2)) Missing."x" '
+                                    'ELSE IF (a = const(3)) Missing."x"'
+                                ),
+                            }
+                        ],
+                    }
+                ],
+                "Keys": [{"FieldNames": ["ref"]}],
+            }
+        ]
+    }
+    dbml = Generator(symbols=symbols).dbml()
+    # The 'References Missing."x" (cross-package)' string should appear once,
+    # not three times, even though three branches independently target Missing.
+    assert dbml.count("(cross-package)") == 1
 
 
 def test_caption_equal_to_name_is_not_emitted_as_note() -> None:
