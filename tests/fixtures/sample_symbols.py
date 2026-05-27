@@ -43,9 +43,17 @@ def sample_symbols() -> dict[str, Any]:
                 "Fields": [
                     {"Name": "No.", "TypeDefinition": _code(20)},
                     {"Name": "Name", "TypeDefinition": _text(100)},
+                    {
+                        "Name": "Email",
+                        "TypeDefinition": _text(80),
+                        "Properties": [{"Name": "NotBlank", "Value": True}],
+                    },
                     {"Name": "Type", "TypeDefinition": _enum("Customer Type")},
                 ],
-                "Keys": [{"FieldNames": ["No."]}],
+                "Keys": [
+                    {"FieldNames": ["No."]},
+                    {"FieldNames": ["Email"]},
+                ],
             },
             {
                 "Name": "Sales Header",

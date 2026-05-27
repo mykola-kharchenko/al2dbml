@@ -164,3 +164,77 @@ def test_extension_stub_carries_configured_schema() -> None:
     gen = Generator(symbols=sample_symbols(), merge_extensions=False, schema="dbo")
     gen.build()
     assert gen._tables["Customer (Extension)"].schema == "dbo"
+
+
+def test_not_null_flag_set_when_notblank_true() -> None:
+    gen = Generator(symbols=sample_symbols())
+    gen.build()
+    assert gen._columns[("Customer", "Email")].not_null is True
+
+
+def test_not_null_flag_not_set_for_pk_field() -> None:
+    gen = Generator(symbols=sample_symbols())
+    gen.build()
+    pk_col = gen._columns[("Customer", "No.")]
+    assert pk_col.pk is True
+    # PKs imply not-null in DBML; we deliberately leave the flag off
+    assert pk_col.not_null is False
+
+
+def test_secondary_single_column_key_marks_column_unique() -> None:
+    gen = Generator(symbols=sample_symbols())
+    gen.build()
+    assert gen._columns[("Customer", "Email")].unique is True
+
+
+def test_multi_column_secondary_key_does_not_mark_unique() -> None:
+    gen = Generator(symbols=sample_symbols())
+    gen.build()
+    # Sales Header's only key is the multi-field PK; nothing should be unique.
+    for fname in ("Document Type", "No.", "Sell-to Customer No."):
+        col = gen._columns[("Sales Header", fname)]
+        assert col.unique is False, f"{fname} should not be marked unique"
+
+
+def test_notnull_property_alternative_spelling() -> None:
+    # The canonical AL spelling is NotBlank but tolerate NotNull too.
+    symbols = {
+        "Tables": [
+            {
+                "Name": "T",
+                "Fields": [
+                    {
+                        "Name": "x",
+                        "TypeDefinition": {"Name": "Integer"},
+                        "Properties": [{"Name": "NotNull", "Value": True}],
+                    }
+                ],
+                "Keys": [{"FieldNames": ["x"]}],
+            }
+        ]
+    }
+    gen = Generator(symbols=symbols)
+    gen.build()
+    # x is PK so not_null stays False (PK implies not-null in DBML already)
+    assert gen._columns[("T", "x")].not_null is False
+
+    # Same with a non-PK field
+    symbols["Tables"][0]["Fields"].append(
+        {
+            "Name": "y",
+            "TypeDefinition": {"Name": "Integer"},
+            "Properties": [{"Name": "NotNull", "Value": True}],
+        }
+    )
+    gen2 = Generator(symbols=symbols)
+    gen2.build()
+    assert gen2._columns[("T", "y")].not_null is True
+
+
+def test_unique_flag_renders_in_dbml() -> None:
+    dbml = Generator(symbols=sample_symbols()).dbml()
+    # The Email column on Customer should have both flags in some order
+    # (pydbml controls the in-block ordering); assert each substring independently.
+    assert '"Email" varchar(80)' in dbml
+    assert "not null" in dbml.lower()
+    assert "unique" in dbml.lower()

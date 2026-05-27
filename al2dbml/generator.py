@@ -135,6 +135,20 @@ class Generator:
             if col is not None:
                 table.add_column(col)
                 self._columns[(name, col.name)] = col
+
+        # Single-field secondary keys imply uniqueness; multi-field keys are
+        # deliberately deferred to a future "secondary keys as indexes" slice.
+        for key in keys[1:] if isinstance(keys, list) else []:
+            if not isinstance(key, dict):
+                continue
+            field_names = key.get("FieldNames") or []
+            if len(field_names) != 1:
+                continue
+            sole = field_names[0]
+            col = self._columns.get((name, sole))
+            if col is not None and not col.pk:
+                col.unique = True
+
         return table
 
     def _make_column(
@@ -152,10 +166,15 @@ class Generator:
             if subtype_name and subtype_name in self._enums:
                 col_type = self._enums[subtype_name]
 
-        col = Column(name=fname, type=col_type, pk=(fname in pk_names))
+        is_pk = fname in pk_names
+        field_props = self._properties(field_def.get("Properties"))
+        # AL spells the non-nullable signal as 'NotBlank'; tolerate 'NotNull' too.
+        # DBML PK already implies not-null, so don't double-mark PK columns.
+        not_null = not is_pk and bool(field_props.get("NotBlank") or field_props.get("NotNull"))
+
+        col = Column(name=fname, type=col_type, pk=is_pk, not_null=not_null)
 
         notes_parts: list[str] = []
-        field_props = self._properties(field_def.get("Properties"))
         caption = field_props.get("Caption")
         if caption:
             notes_parts.append(str(caption))
