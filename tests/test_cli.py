@@ -119,6 +119,25 @@ def test_min_group_size_zero_rejected(tmp_path: Path) -> None:
     assert result.exit_code != 0
 
 
+def test_include_flag_filters_tables(tmp_path: Path) -> None:
+    app = _make_app(tmp_path)
+    runner = CliRunner()
+    result = runner.invoke(main, [str(app), "--include", "Sales*", "--stats"])
+    assert result.exit_code == 0, result.stderr
+    assert 'Table "dbo"."Sales Header"' in result.stdout
+    assert 'Table "dbo"."Customer"' not in result.stdout
+    assert 'Table "dbo"."Purchase Header"' not in result.stdout
+
+
+def test_exclude_flag_drops_tables(tmp_path: Path) -> None:
+    app = _make_app(tmp_path)
+    runner = CliRunner()
+    result = runner.invoke(main, [str(app), "--exclude", "Purchase*"])
+    assert result.exit_code == 0, result.stderr
+    assert 'Table "dbo"."Sales Header"' in result.stdout
+    assert 'Table "dbo"."Purchase Header"' not in result.stdout
+
+
 def test_stats_flag_prints_counts_to_stderr(tmp_path: Path) -> None:
     app = _make_app(tmp_path)
     runner = CliRunner()

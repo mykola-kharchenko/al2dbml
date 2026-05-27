@@ -70,6 +70,22 @@ from .grouping import GroupingConfig, parse_rule_strings
     help="Drop groups containing fewer than this many tables.",
 )
 @click.option(
+    "--include",
+    "includes",
+    multiple=True,
+    metavar="PATTERN",
+    help="Only keep tables whose name matches at least one PATTERN (fnmatch). Repeatable.",
+)
+@click.option(
+    "--exclude",
+    "excludes",
+    multiple=True,
+    metavar="PATTERN",
+    help=(
+        "Drop tables whose name matches any PATTERN (fnmatch). Applied after --include. Repeatable."
+    ),
+)
+@click.option(
     "--stats",
     "show_stats",
     is_flag=True,
@@ -86,6 +102,8 @@ def main(
     group_by: str,
     no_auto_groups: bool,
     min_group_size: int,
+    includes: tuple[str, ...],
+    excludes: tuple[str, ...],
     show_stats: bool,
 ) -> None:
     """Convert a compiled AL package APP into a DBML schema."""
@@ -103,7 +121,13 @@ def main(
     )
 
     try:
-        generator = Generator.from_app(app, merge_extensions=merge_extensions, grouping=grouping)
+        generator = Generator.from_app(
+            app,
+            merge_extensions=merge_extensions,
+            grouping=grouping,
+            includes=list(includes),
+            excludes=list(excludes),
+        )
         rendered = generator.dbml()
     except FileNotFoundError as exc:
         raise click.ClickException(str(exc)) from exc

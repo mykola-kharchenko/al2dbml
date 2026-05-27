@@ -330,6 +330,53 @@ def test_dbml_starts_with_provenance_header() -> None:
     assert "// AppId: 00000000-0000-0000-0000-000000000001" in dbml
 
 
+def test_include_keeps_only_matching_tables() -> None:
+    gen = Generator(symbols=sample_symbols(), includes=["Sales*"])
+    gen.build()
+    assert "Sales Header" in gen._tables
+    assert "Sales Line" in gen._tables
+    assert "Customer" not in gen._tables
+    assert "Purchase Header" not in gen._tables
+
+
+def test_exclude_drops_matching_tables() -> None:
+    gen = Generator(symbols=sample_symbols(), excludes=["Purchase*"])
+    gen.build()
+    assert "Customer" in gen._tables
+    assert "Sales Header" in gen._tables
+    assert "Purchase Header" not in gen._tables
+    assert "Purchase Line" not in gen._tables
+
+
+def test_exclude_wins_over_include() -> None:
+    gen = Generator(
+        symbols=sample_symbols(),
+        includes=["Sales*", "Purchase*"],
+        excludes=["*Line*"],
+    )
+    gen.build()
+    assert "Sales Header" in gen._tables
+    assert "Purchase Header" in gen._tables
+    assert "Sales Line" not in gen._tables
+    assert "Purchase Line" not in gen._tables
+
+
+def test_ref_to_filtered_target_degrades_to_note() -> None:
+    # Customer is filtered out; Sales Header.Sell-to Customer No. -> Customer
+    # should degrade to a cross-package note rather than producing a Ref.
+    gen = Generator(symbols=sample_symbols(), excludes=["Customer"])
+    dbml = gen.dbml()
+    assert 'Table "dbo"."Customer"' not in dbml
+    # The cross-package note path runs when the target table is missing.
+    assert "cross-package" in dbml.lower()
+
+
+def test_filter_drops_tables_from_groups() -> None:
+    gen = Generator(symbols=sample_symbols(), excludes=["Sales*"])
+    dbml = gen.dbml()
+    assert 'TableGroup "Sales"' not in dbml
+
+
 def test_dbml_header_works_without_metadata() -> None:
     # The al2dbml version line always appears; missing Name/AppId just drop.
     dbml = Generator(symbols={"Tables": [{"Name": "T", "Fields": []}]}).dbml()

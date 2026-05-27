@@ -48,6 +48,8 @@ class Generator:
     merge_extensions: bool = True
     grouping: GroupingConfig = field(default_factory=GroupingConfig)
     schema: str = "dbo"
+    includes: list[str] = field(default_factory=list)
+    excludes: list[str] = field(default_factory=list)
     db: Database = field(default_factory=Database)
 
     _enums: dict[str, Enum] = field(init=False, default_factory=dict)
@@ -73,6 +75,8 @@ class Generator:
             self._merge_table_extensions()
         else:
             self._build_extension_stubs()
+        if self.includes or self.excludes:
+            self._apply_table_filters()
         self._resolve_references()
         self._build_groups()
         self._built = True
@@ -344,6 +348,38 @@ class Generator:
                 continue
             seen.add(key)
             self.db.add(Reference(type=">", col1=source_col, col2=target_col))
+
+    def _apply_table_filters(self) -> None:
+        """Drop tables that don't match the include/exclude glob patterns.
+
+        ``includes`` is a positive filter: when non-empty, tables matching *none* of the
+        include patterns are removed. ``excludes`` is a negative filter applied after:
+        tables matching *any* exclude pattern are removed. Refs into a removed target
+        degrade naturally to cross-package notes via the existing _resolve_references
+        path, since the target table is gone from ``self._tables``.
+        """
+        from fnmatch import fnmatchcase
+
+        def keep(name: str) -> bool:
+            if self.includes and not any(fnmatchcase(name, p) for p in self.includes):
+                return False
+            if self.excludes and any(fnmatchcase(name, p) for p in self.excludes):
+                return False
+            return True
+
+        dropped = {name for name in self._tables if not keep(name)}
+        for name in dropped:
+            table = self._tables.pop(name)
+            self._table_namespaces.pop(name, None)
+            # Remove column entries for this table so references can't accidentally
+            # rebind to a column on a filtered-out table.
+            for key in list(self._columns):
+                if key[0] == name:
+                    del self._columns[key]
+            try:
+                self.db.delete_table(table)
+            except Exception:  # noqa: BLE001 — defensive against pydbml internal changes
+                pass
 
     def _build_groups(self) -> None:
         for tg in build_table_groups(
