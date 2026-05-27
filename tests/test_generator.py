@@ -231,6 +231,77 @@ def test_notnull_property_alternative_spelling() -> None:
     assert gen2._columns[("T", "y")].not_null is True
 
 
+def test_if_else_emits_one_ref_per_branch() -> None:
+    gen = Generator(symbols=sample_symbols())
+    gen.build()
+    targets = {(r.source_table, r.source_field, r.target_table) for r in gen._pending_refs}
+    assert ("Sales Line", "Source No.", "Item") in targets
+    assert ("Sales Line", "Source No.", "Resource") in targets
+
+
+def test_if_else_branches_carry_conditions_in_note() -> None:
+    dbml = Generator(symbols=sample_symbols()).dbml()
+    # The Source No. column on Sales Line should carry per-branch notes
+    assert "IF (Type=CONST(Item))" in dbml
+    assert "IF (Type=CONST(Resource))" in dbml
+
+
+def test_if_else_default_branch_no_condition() -> None:
+    branches = Generator._parse_conditional_relation('IF (Cond1) "T1"."f1" ELSE "T2"."f2"')
+    assert branches is not None
+    assert len(branches) == 2
+    assert branches[0][0] == "(Cond1)"
+    assert branches[0][1:3] == ("T1", "f1")
+    assert branches[1][0] is None  # default branch has no IF condition
+    assert branches[1][1:3] == ("T2", "f2")
+
+
+def test_if_else_with_per_branch_where() -> None:
+    branches = Generator._parse_conditional_relation('IF (T=CONST(A)) Tbl."F" WHERE("X"=CONST(""))')
+    assert branches is not None
+    if_cond, table, field, where = branches[0]
+    assert if_cond == "(T=CONST(A))"
+    assert table == "Tbl"
+    assert field == "F"
+    assert where == '("X"=CONST(""))'
+
+
+def test_if_else_unresolvable_branch_keeps_note() -> None:
+    # A branch pointing to a table that isn't in the symbols still appears in the note.
+    dbml = Generator(
+        symbols={
+            "Tables": [
+                {
+                    "Name": "S",
+                    "Fields": [
+                        {
+                            "Name": "ref",
+                            "TypeDefinition": {"Name": "Integer"},
+                            "Properties": [
+                                {
+                                    "Name": "TableRelation",
+                                    "Value": 'IF (T=CONST(X)) DoesNotExist."No."',
+                                }
+                            ],
+                        }
+                    ],
+                    "Keys": [{"FieldNames": ["ref"]}],
+                }
+            ]
+        }
+    ).dbml()
+    assert "IF (T=CONST(X))" in dbml
+    assert "DoesNotExist" in dbml
+
+
+def test_non_conditional_relation_returns_none() -> None:
+    # A regular table.field reference should not match the IF/ELSE form, so
+    # _parse_conditional_relation returns None and the caller falls back.
+    assert Generator._parse_conditional_relation('"Customer"."No."') is None
+    assert Generator._parse_conditional_relation("Customer.No.") is None
+    assert Generator._parse_conditional_relation("") is None
+
+
 def test_unique_flag_renders_in_dbml() -> None:
     dbml = Generator(symbols=sample_symbols()).dbml()
     # The Email column on Customer should have both flags in some order

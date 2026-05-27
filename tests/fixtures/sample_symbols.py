@@ -98,8 +98,35 @@ def sample_symbols() -> dict[str, Any]:
                             }
                         ],
                     },
+                    {
+                        "Name": "Source No.",
+                        "TypeDefinition": _code(20),
+                        "Properties": [
+                            {
+                                "Name": "TableRelation",
+                                "Value": (
+                                    'IF (Type=CONST(Item)) Item."No." '
+                                    'ELSE IF (Type=CONST(Resource)) Resource."No."'
+                                ),
+                            }
+                        ],
+                    },
                 ],
                 "Keys": [{"FieldNames": ["Document Type", "Document No.", "Line No."]}],
+            },
+            {
+                "Name": "Item",
+                "Fields": [
+                    {"Name": "No.", "TypeDefinition": _code(20)},
+                ],
+                "Keys": [{"FieldNames": ["No."]}],
+            },
+            {
+                "Name": "Resource",
+                "Fields": [
+                    {"Name": "No.", "TypeDefinition": _code(20)},
+                ],
+                "Keys": [{"FieldNames": ["No."]}],
             },
             {
                 "Name": "Purchase Header",

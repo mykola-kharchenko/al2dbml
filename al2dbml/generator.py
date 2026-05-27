@@ -14,6 +14,10 @@ from .types import map_al_type
 
 _IDENT_RE = re.compile(r'\s*(?:"([^"]+)"|([A-Za-z_]\w*))\s*')
 _WHERE_RE = re.compile(r"\bWHERE\s*\(", re.IGNORECASE)
+_LEADING_IF_RE = re.compile(r"^\s*IF\b", re.IGNORECASE)
+_IF_HEAD_RE = re.compile(r"\s*(?:ELSE\s+)?IF\s*\(", re.IGNORECASE)
+_ELSE_HEAD_RE = re.compile(r"\s*ELSE\b", re.IGNORECASE)
+_NEXT_ELSE_RE = re.compile(r"\bELSE\b", re.IGNORECASE)
 
 
 @dataclass
@@ -181,19 +185,40 @@ class Generator:
 
         relation = field_props.get("TableRelation") or field_def.get("TableRelation")
         if relation:
-            target_table, target_field, condition = self._parse_relation_string(relation)
-            if target_table:
-                self._pending_refs.append(
-                    _PendingRef(
-                        source_table=table_name,
-                        source_field=fname,
-                        target_table=target_table,
-                        target_field=target_field,
-                        condition=condition,
+            branches = self._parse_conditional_relation(relation)
+            if branches is not None:
+                for if_cond, br_table, br_field, br_where in branches:
+                    if br_table:
+                        self._pending_refs.append(
+                            _PendingRef(
+                                source_table=table_name,
+                                source_field=fname,
+                                target_table=br_table,
+                                target_field=br_field,
+                                condition=br_where,
+                            )
+                        )
+                    label = (
+                        f'{br_table}."{br_field}"' if (br_table and br_field) else (br_table or "?")
                     )
-                )
-                if condition:
-                    notes_parts.append(f"Condition: {condition}")
+                    prefix = f"IF {if_cond} -> " if if_cond else "ELSE -> "
+                    notes_parts.append(f"{prefix}{label}")
+                    if br_where:
+                        notes_parts.append(f"Condition: {br_where}")
+            else:
+                target_table, target_field, condition = self._parse_relation_string(relation)
+                if target_table:
+                    self._pending_refs.append(
+                        _PendingRef(
+                            source_table=table_name,
+                            source_field=fname,
+                            target_table=target_table,
+                            target_field=target_field,
+                            condition=condition,
+                        )
+                    )
+                    if condition:
+                        notes_parts.append(f"Condition: {condition}")
 
         if notes_parts:
             col.note = Note("\n".join(notes_parts))
@@ -333,6 +358,68 @@ class Generator:
 
         table, field_name = Generator._parse_qualified(text)
         return table, field_name, condition
+
+    @staticmethod
+    def _find_matching_paren(text: str, open_index: int) -> int:
+        """Return the index of the ')' that matches the '(' at ``open_index``, or -1."""
+        depth = 0
+        for i in range(open_index, len(text)):
+            ch = text[i]
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    return i
+        return -1
+
+    @staticmethod
+    def _parse_conditional_relation(
+        value: Any,
+    ) -> list[tuple[str | None, str | None, str | None, str | None]] | None:
+        """Parse an AL conditional ``IF (...) Tbl.Field ELSE IF (...) ... ELSE ...`` relation.
+
+        Returns one tuple per branch of ``(if_condition, target_table, target_field,
+        where_condition)``. ``if_condition`` is ``None`` for a trailing bare ``ELSE`` default
+        branch. Returns ``None`` when ``value`` is not a string or does not start with the
+        ``IF`` keyword, so callers can fall back to :meth:`_parse_relation_string` for the
+        regular single-relation form.
+        """
+        if not isinstance(value, str):
+            return None
+        text = value.strip()
+        if not _LEADING_IF_RE.match(text):
+            return None
+
+        branches: list[tuple[str | None, str | None, str | None, str | None]] = []
+        pos = 0
+        while pos < len(text):
+            if_head = _IF_HEAD_RE.match(text, pos)
+            if if_head:
+                open_paren = if_head.end() - 1
+                close_paren = Generator._find_matching_paren(text, open_paren)
+                if close_paren == -1:
+                    return branches or None
+                if_cond = text[open_paren : close_paren + 1]
+                pos = close_paren + 1
+                next_else = _NEXT_ELSE_RE.search(text, pos)
+                if next_else:
+                    ref_chunk = text[pos : next_else.start()]
+                    pos = next_else.start()
+                else:
+                    ref_chunk = text[pos:]
+                    pos = len(text)
+                table, field_name, where = Generator._parse_relation_string(ref_chunk)
+                branches.append((if_cond, table, field_name, where))
+                continue
+            else_head = _ELSE_HEAD_RE.match(text, pos)
+            if else_head:
+                ref_chunk = text[else_head.end() :]
+                table, field_name, where = Generator._parse_relation_string(ref_chunk)
+                branches.append((None, table, field_name, where))
+                break
+            break
+        return branches or None
 
     @staticmethod
     def _parse_qualified(text: str) -> tuple[str | None, str | None]:
