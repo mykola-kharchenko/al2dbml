@@ -420,6 +420,37 @@ def test_enum_extension_empty_value_also_substituted() -> None:
     assert item_names == ["A", " ", "B"]
 
 
+def test_self_referential_relation_is_skipped() -> None:
+    # Real-world AL has fields with TableRelation pointing at the same column
+    # they live on (e.g. 'Production Order.No.' -> 'Production Order.No.').
+    # Such a Ref carries no information; drop it instead of emitting noise.
+    symbols = {
+        "Tables": [
+            {
+                "Name": "Production Order",
+                "Fields": [
+                    {
+                        "Name": "No.",
+                        "TypeDefinition": {"Name": "Code", "TypeArguments": [20]},
+                        "Properties": [
+                            {
+                                "Name": "TableRelation",
+                                "Value": '"Production Order"."No."',
+                            }
+                        ],
+                    }
+                ],
+                "Keys": [{"FieldNames": ["No."]}],
+            }
+        ]
+    }
+    dbml = Generator(symbols=symbols).dbml()
+    # No Ref block should be emitted at all
+    assert "Ref {" not in dbml
+    # The table itself is still present
+    assert 'Table "dbo"."Production Order"' in dbml
+
+
 def test_filter_drops_tables_from_groups() -> None:
     gen = Generator(symbols=sample_symbols(), excludes=["Sales*"])
     dbml = gen.dbml()

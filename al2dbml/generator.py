@@ -366,6 +366,11 @@ class Generator:
                     continue
                 target_col = pk_cols[0]
 
+            if source_col is target_col:
+                # Self-referential TableRelation (some BC tables declare a
+                # field that references itself, e.g. 'refers to original').
+                # Skip emitting a no-op Ref that just adds visual noise.
+                continue
             key = (id(source_col), id(target_col))
             if key in seen:
                 continue
