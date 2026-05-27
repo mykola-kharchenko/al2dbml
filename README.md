@@ -110,6 +110,7 @@ print(gen.dbml())
 - Multi-column secondary keys are not yet emitted as DBML indexes; only single-column secondary keys are surfaced (as `[unique]` on the column).
 - Cross-package references (table relations that point to a table outside the current `.app`) are preserved as notes on the source column, since the target table is not present in the diagram.
 - `IF (...) ... ELSE IF (...) ... ELSE ...` conditional `TableRelation` expressions are parsed into one DBML `Ref` per resolved branch, with each branch's condition recorded in the source column's note. Branches whose target table is missing from the current `.app` degrade to notes only.
+- Render time scales quadratically with the table count inside the underlying `pydbml` library. Small/medium packages (up to a few hundred tables) finish in under a second. Microsoft's full Base Application (~1,500 tables) currently takes several minutes to render, even though parsing itself is fast. A custom DBML emitter is on the roadmap to remove this cliff.
 
 ## Development
 
