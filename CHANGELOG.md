@@ -4,6 +4,17 @@ All notable changes to `al2dbml` land here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.4] - 2026-05-27
+
+### Fixed
+
+- `[project.urls]` Homepage and Issues now point at `github.com/mykola-kharchenko/al2dbml` instead of the stale `kharmyko/al2dbml` from the original 0.1.0 scaffold. Visible on PyPI's "Project links" panel.
+
+### Changed
+
+- README heading is now **AL-to-DBML** (the human-readable form). Package, CLI command, repo, and import name all remain `al2dbml`.
+- Five status badges added under the title: PyPI version, supported Python versions, CI status, MIT license, and Ruff lint marker.
+
 ## [0.4.3] - 2026-05-27
 
 ### Fixed
@@ -117,6 +128,7 @@ Initial release.
 - `al2dbml` console script with `-o`, `--merge-extensions/--no-merge-extensions`, `-g`, `--no-groups`, `--no-auto-groups`, `--min-group-size`, `--version`, `-h/--help`.
 - Public Python API: `Generator`, `generate`, `GroupingConfig`, `__version__`.
 
+[0.4.4]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.4
 [0.4.3]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.3
 [0.4.2]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.2
 [0.4.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.1
