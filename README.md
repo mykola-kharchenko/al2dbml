@@ -2,6 +2,12 @@
 
 `al2dbml` is a small Python CLI that converts a compiled Microsoft Dynamics 365 Business Central AL package (`.app`) into a [DBML](https://dbml.dbdiagram.io/) schema you can paste straight into [dbdiagram.io](https://dbdiagram.io) or [dbdocs.io](https://dbdocs.io). The pipeline reads `SymbolReference.json` from the `.app` archive (tolerating AL's 40-byte header), normalises tables, extensions, enums, and `TableRelation`s, and emits one valid DBML document with `Table`, `Ref`, `Enum`, and `TableGroup` sections.
 
+## What's new in 0.3.1
+
+- **`al2dbml-validate FILE`** — second console script that parses a DBML file through pydbml and reports syntax errors with line/column. Exit code 0 on success, non-zero on parse error. For the authoritative check matching dbdiagram.io exactly, install [`@dbml/cli`](https://www.npmjs.com/package/@dbml/cli) (`npm i -g @dbml/cli`) and run `dbml2sql FILE --postgres`.
+- **Empty enum values fixed** — AL sometimes encodes a default/blank enum slot as `""`, which broke DBML's parser. Now silently substituted with `" "` (single space) so the slot still appears.
+- **Self-referential refs dropped** — some BC tables declare a `TableRelation` from a field back to itself (e.g. *Production Order.No.* → *Production Order.No.*). Those are now skipped instead of being emitted as a meaningless `Ref { T.f > T.f }`.
+
 ## What's new in 0.3.0
 
 - **`--include` / `--exclude` table filters** — carve out a slice of a large package by name pattern (essential for Microsoft's Base Application, which has 1,500+ tables).
