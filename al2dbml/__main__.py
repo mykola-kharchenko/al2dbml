@@ -90,7 +90,10 @@ from .grouping import GroupingConfig, parse_rule_strings
     "show_stats",
     is_flag=True,
     default=False,
-    help="Print object counts (tables, enums, refs, groups) to stderr after building.",
+    help=(
+        "Print object counts (tables, enums, refs, groups) to stderr. "
+        "When used without -o, skips the DBML render entirely for a fast probe."
+    ),
 )
 @click.version_option(__version__, prog_name="al2dbml")
 def main(
@@ -120,6 +123,11 @@ def main(
         min_group_size=min_group_size,
     )
 
+    # If the user only wants stats (no -o and no DBML stream to consumers),
+    # skip the expensive DBML render entirely; build() alone is O(n) while
+    # the pydbml render path is O(n^2) on table count.
+    needs_render = output is not None or not show_stats
+
     try:
         generator = Generator.from_app(
             app,
@@ -128,7 +136,11 @@ def main(
             includes=list(includes),
             excludes=list(excludes),
         )
-        rendered = generator.dbml()
+        if needs_render:
+            rendered: str | None = generator.dbml()
+        else:
+            generator.build()
+            rendered = None
     except FileNotFoundError as exc:
         raise click.ClickException(str(exc)) from exc
     except KeyError as exc:
@@ -145,6 +157,9 @@ def main(
             "warning: parsed 0 tables and 0 enums — output is effectively empty",
             err=True,
         )
+
+    if rendered is None:
+        return
 
     # POSIX text-file convention: terminate output with a newline. Without it,
     # zsh shows a trailing '%' marker after stdout output. pydbml's renderer

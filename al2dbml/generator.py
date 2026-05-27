@@ -375,7 +375,14 @@ class Generator:
             if key in seen:
                 continue
             seen.add(key)
-            self.db.add(Reference(type=">", col1=source_col, col2=target_col))
+            ref = Reference(type=">", col1=source_col, col2=target_col)
+            # pydbml.Database.add_reference performs an O(n) duplicate check via
+            # Reference.__eq__ that recurses through both columns and both tables.
+            # On Base Application (~8k refs) that ballooned build time to several
+            # minutes. We already dedupe by (id(src), id(tgt)) above, so the
+            # check is redundant; inline the cheap parts of add_reference here.
+            ref.database = self.db
+            self.db.refs.append(ref)
 
     def _apply_table_filters(self) -> None:
         """Drop tables that don't match the include/exclude glob patterns.

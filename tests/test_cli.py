@@ -122,7 +122,7 @@ def test_min_group_size_zero_rejected(tmp_path: Path) -> None:
 def test_include_flag_filters_tables(tmp_path: Path) -> None:
     app = _make_app(tmp_path)
     runner = CliRunner()
-    result = runner.invoke(main, [str(app), "--include", "Sales*", "--stats"])
+    result = runner.invoke(main, [str(app), "--include", "Sales*"])
     assert result.exit_code == 0, result.stderr
     assert 'Table "dbo"."Sales Header"' in result.stdout
     assert 'Table "dbo"."Customer"' not in result.stdout
@@ -148,6 +148,30 @@ def test_stats_flag_prints_counts_to_stderr(tmp_path: Path) -> None:
     assert "enums=" in result.stderr
     assert "refs=" in result.stderr
     assert "tables=" not in result.stdout
+
+
+def test_stats_alone_skips_dbml_render(tmp_path: Path) -> None:
+    # When --stats is the only output mode (no -o), we should not pay the cost
+    # of pydbml's O(n^2) render; stdout stays empty and only stderr gets used.
+    app = _make_app(tmp_path)
+    runner = CliRunner()
+    result = runner.invoke(main, [str(app), "--stats"])
+    assert result.exit_code == 0
+    assert result.stdout == ""  # no DBML on stdout in stats-only mode
+    assert "tables=" in result.stderr
+
+
+def test_stats_with_output_still_writes_file(tmp_path: Path) -> None:
+    # If -o is given alongside --stats, we still need the rendered DBML.
+    app = _make_app(tmp_path)
+    out = tmp_path / "schema.dbml"
+    runner = CliRunner()
+    result = runner.invoke(main, [str(app), "--stats", "-o", str(out)])
+    assert result.exit_code == 0
+    assert out.exists()
+    body = out.read_text(encoding="utf-8")
+    assert 'Table "dbo"."Customer"' in body
+    assert "tables=" in result.stderr
 
 
 def test_empty_output_emits_warning(tmp_path: Path) -> None:
