@@ -81,13 +81,43 @@ def test_cross_package_reference_does_not_crash_and_is_noted() -> None:
     assert '**References** `Vendor."No."` (cross-package)' in dbml
 
 
-def test_if_else_branches_render_as_markdown_bullet_list() -> None:
+def test_if_else_branches_render_inline_with_bullets() -> None:
     dbml = _build()
-    # Sales Line.Source No. has IF/ELSE; the note should be a bullet list
-    # under a bold header so dbdiagram/dbdocs renders it as a real list.
-    assert "**Conditional reference:**" in dbml
-    assert '- `IF (Type=CONST(Item))` → `Item."No."`' in dbml
-    assert '- `IF (Type=CONST(Resource))` → `Resource."No."`' in dbml
+    # IF/ELSE branches are joined on a single line with U+2022 separators
+    # so pydbml's multi-line indentation can't break the Markdown.
+    assert (
+        "**Conditional reference:** "
+        '`IF (Type=CONST(Item))` → `Item."No."` • '
+        '`IF (Type=CONST(Resource))` → `Resource."No."`'
+    ) in dbml
+
+
+def test_caption_equal_to_name_is_not_emitted_as_note() -> None:
+    # 96% of Base Application fields have caption == name; emitting that as
+    # a note is pure noise. Only different captions should appear.
+    symbols = {
+        "Tables": [
+            {
+                "Name": "T",
+                "Fields": [
+                    {
+                        "Name": "MatchesCaption",
+                        "TypeDefinition": {"Name": "Integer"},
+                        "Properties": [{"Name": "Caption", "Value": "MatchesCaption"}],
+                    },
+                    {
+                        "Name": "DifferentCaption",
+                        "TypeDefinition": {"Name": "Integer"},
+                        "Properties": [{"Name": "Caption", "Value": "Different label"}],
+                    },
+                ],
+                "Keys": [{"FieldNames": ["MatchesCaption"]}],
+            }
+        ]
+    }
+    dbml = Generator(symbols=symbols).dbml()
+    assert "[note: 'MatchesCaption']" not in dbml
+    assert "[note: 'Different label']" in dbml
 
 
 def test_disabled_grouping_emits_no_table_groups() -> None:

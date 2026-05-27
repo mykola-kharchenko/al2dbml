@@ -269,14 +269,17 @@ class Generator:
 
         notes_parts: list[str] = []
         caption = field_props.get("Caption")
-        if caption:
+        # Skip caption when it just restates the field name: ~96% of Base
+        # Application fields have caption == name so adding it would just
+        # double the visible text without conveying new information.
+        if caption and str(caption) != fname:
             notes_parts.append(str(caption))
 
         relation = field_props.get("TableRelation") or field_def.get("TableRelation")
         if relation:
             branches = self._parse_conditional_relation(relation)
             if branches is not None:
-                bullet_lines: list[str] = []
+                branch_parts: list[str] = []
                 for if_cond, br_table, br_field, br_where in branches:
                     if br_table:
                         self._pending_refs.append(
@@ -292,12 +295,12 @@ class Generator:
                         f'{br_table}."{br_field}"' if (br_table and br_field) else (br_table or "?")
                     )
                     head = f"`IF {if_cond}`" if if_cond else "`ELSE`"
-                    line = f"- {head} → `{label}`"
+                    piece = f"{head} → `{label}`"
                     if br_where:
-                        line += f" where `{br_where}`"
-                    bullet_lines.append(line)
-                if bullet_lines:
-                    notes_parts.append("**Conditional reference:**\n" + "\n".join(bullet_lines))
+                        piece += f" where `{br_where}`"
+                    branch_parts.append(piece)
+                if branch_parts:
+                    notes_parts.append("**Conditional reference:** " + " • ".join(branch_parts))
             else:
                 target_table, target_field, condition = self._parse_relation_string(relation)
                 if target_table:
@@ -314,10 +317,12 @@ class Generator:
                         notes_parts.append(f"**Condition:** `{condition}`")
 
         if notes_parts:
-            # Paragraph break between sections (caption / condition / conditional list)
-            # so Markdown renderers treat them as distinct blocks; bullet lists keep
-            # consecutive lines internally because that's what Markdown bullets need.
-            col.note = Note("\n\n".join(notes_parts))
+            # Single-line note: pydbml's table renderer indents every line of a
+            # multi-line note by 4 spaces (via textwrap.indent on the column
+            # block), which Markdown then interprets as a code block — killing
+            # bold and bullet rendering. Keep everything on one physical line
+            # with em-dash section separators so Markdown sees a clean string.
+            col.note = Note(" — ".join(notes_parts))
         return col
 
     def _merge_table_extensions(self) -> None:
@@ -450,9 +455,9 @@ class Generator:
     @staticmethod
     def _append_note(col: Column, line: str) -> None:
         existing = col.note.text if col.note else ""
-        # Markdown paragraph break (blank line) so the appended note renders as
-        # its own block rather than running into the previous section.
-        col.note = Note(f"{existing}\n\n{line}" if existing else line)
+        # Single-line, em-dash separated (see note in _make_column on why we
+        # avoid multi-line text: pydbml's textwrap.indent breaks Markdown).
+        col.note = Note(f"{existing} — {line}" if existing else line)
 
     @staticmethod
     def _properties(raw: Any) -> dict[str, Any]:
