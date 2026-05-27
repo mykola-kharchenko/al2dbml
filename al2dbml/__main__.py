@@ -55,6 +55,13 @@ from .grouping import GroupingConfig, parse_rule_strings
     show_default=True,
     help="Drop groups containing fewer than this many tables.",
 )
+@click.option(
+    "--stats",
+    "show_stats",
+    is_flag=True,
+    default=False,
+    help="Print object counts (tables, enums, refs, groups) to stderr after building.",
+)
 @click.version_option(__version__, prog_name="al2dbml")
 def main(
     app: Path,
@@ -64,6 +71,7 @@ def main(
     no_groups: bool,
     no_auto_groups: bool,
     min_group_size: int,
+    show_stats: bool,
 ) -> None:
     """Convert a compiled AL package APP into a DBML schema."""
     try:
@@ -85,6 +93,18 @@ def main(
         raise click.ClickException(str(exc)) from exc
     except KeyError as exc:
         raise click.ClickException(str(exc)) from exc
+
+    counts = generator.stats()
+    if show_stats:
+        click.echo(
+            ", ".join(f"{name}={value}" for name, value in counts.items()),
+            err=True,
+        )
+    if counts["tables"] == 0 and counts["enums"] == 0:
+        click.echo(
+            "warning: parsed 0 tables and 0 enums — output is effectively empty",
+            err=True,
+        )
 
     # POSIX text-file convention: terminate output with a newline. Without it,
     # zsh shows a trailing '%' marker after stdout output. pydbml's renderer

@@ -119,6 +119,43 @@ def test_min_group_size_zero_rejected(tmp_path: Path) -> None:
     assert result.exit_code != 0
 
 
+def test_stats_flag_prints_counts_to_stderr(tmp_path: Path) -> None:
+    app = _make_app(tmp_path)
+    runner = CliRunner()
+    result = runner.invoke(main, [str(app), "--stats"])
+    assert result.exit_code == 0, result.stderr
+    # counts go to stderr so they don't pollute the DBML on stdout
+    assert "tables=" in result.stderr
+    assert "enums=" in result.stderr
+    assert "refs=" in result.stderr
+    assert "tables=" not in result.stdout
+
+
+def test_empty_output_emits_warning(tmp_path: Path) -> None:
+    # An .app that defines no tables and no enums (e.g. a codeunit-only
+    # extension like Microsoft's Sales and Inventory Forecast).
+    payload = json.dumps({"Codeunits": [{"Name": "X"}]}).encode()
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("SymbolReference.json", payload)
+    empty_app = tmp_path / "empty.app"
+    empty_app.write_bytes(buf.getvalue())
+
+    runner = CliRunner()
+    result = runner.invoke(main, [str(empty_app)])
+    assert result.exit_code == 0, result.stderr
+    assert "warning:" in result.stderr.lower()
+    assert "0 tables" in result.stderr.lower()
+
+
+def test_no_warning_when_tables_present(tmp_path: Path) -> None:
+    app = _make_app(tmp_path)
+    runner = CliRunner()
+    result = runner.invoke(main, [str(app)])
+    assert result.exit_code == 0, result.stderr
+    assert "warning" not in result.stderr.lower()
+
+
 @pytest.mark.parametrize("ext", ["badapp"])
 def test_bad_archive_reports_useful_error(tmp_path: Path, ext: str) -> None:
     bad = tmp_path / f"{ext}.app"

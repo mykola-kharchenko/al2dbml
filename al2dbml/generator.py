@@ -81,6 +81,21 @@ class Generator:
         """Build (if needed) and render the database as a DBML string."""
         return self.build().dbml
 
+    def stats(self) -> dict[str, int]:
+        """Return a snapshot of how many of each object kind the build produced.
+
+        Useful as a quick sanity check on any ``.app``: an extension with only
+        codeunits produces ``{'tables': 0, ...}`` and explains an empty diagram.
+        """
+        self.build()
+        return {
+            "tables": len(self._tables),
+            "columns": len(self._columns),
+            "enums": len(self._enums),
+            "refs": len(self.db.refs),
+            "groups": len(self.db.table_groups),
+        }
+
     def _build_enums(self) -> None:
         for entry in self.symbols.get("EnumTypes") or []:
             name = entry.get("Name")
