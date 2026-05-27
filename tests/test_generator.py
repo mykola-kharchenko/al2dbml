@@ -56,7 +56,8 @@ def test_no_table_group_for_lone_customer() -> None:
 
 def test_conditional_relation_note_strips_where_keyword() -> None:
     dbml = _build()
-    assert 'Condition: ("Blocked"=CONST(" "))' in dbml
+    # Note renders as Markdown: bold label, code-spanned expression
+    assert '**Condition:** `("Blocked"=CONST(" "))`' in dbml
     assert "WHERE(WHERE" not in dbml
     assert 'WHERE("Blocked"' not in dbml  # raw WHERE form should not survive
 
@@ -74,10 +75,19 @@ def test_merge_extensions_false_emits_stub_table() -> None:
 
 def test_cross_package_reference_does_not_crash_and_is_noted() -> None:
     dbml = _build()
-    # Sales Line.Vendor No. -> Vendor (Vendor table is not in this fixture)
+    # Sales Line.Vendor No. -> Vendor (Vendor table is not in this fixture).
+    # Note renders as Markdown: bold 'References' label and code-spanned target.
     assert '"Vendor No."' in dbml
-    assert "Vendor" in dbml  # appears at least in note text
-    assert "cross-package" in dbml.lower()
+    assert '**References** `Vendor."No."` (cross-package)' in dbml
+
+
+def test_if_else_branches_render_as_markdown_bullet_list() -> None:
+    dbml = _build()
+    # Sales Line.Source No. has IF/ELSE; the note should be a bullet list
+    # under a bold header so dbdiagram/dbdocs renders it as a real list.
+    assert "**Conditional reference:**" in dbml
+    assert '- `IF (Type=CONST(Item))` → `Item."No."`' in dbml
+    assert '- `IF (Type=CONST(Resource))` → `Resource."No."`' in dbml
 
 
 def test_disabled_grouping_emits_no_table_groups() -> None:

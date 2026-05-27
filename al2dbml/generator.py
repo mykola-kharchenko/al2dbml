@@ -276,6 +276,7 @@ class Generator:
         if relation:
             branches = self._parse_conditional_relation(relation)
             if branches is not None:
+                bullet_lines: list[str] = []
                 for if_cond, br_table, br_field, br_where in branches:
                     if br_table:
                         self._pending_refs.append(
@@ -290,10 +291,13 @@ class Generator:
                     label = (
                         f'{br_table}."{br_field}"' if (br_table and br_field) else (br_table or "?")
                     )
-                    prefix = f"IF {if_cond} -> " if if_cond else "ELSE -> "
-                    notes_parts.append(f"{prefix}{label}")
+                    head = f"`IF {if_cond}`" if if_cond else "`ELSE`"
+                    line = f"- {head} → `{label}`"
                     if br_where:
-                        notes_parts.append(f"Condition: {br_where}")
+                        line += f" where `{br_where}`"
+                    bullet_lines.append(line)
+                if bullet_lines:
+                    notes_parts.append("**Conditional reference:**\n" + "\n".join(bullet_lines))
             else:
                 target_table, target_field, condition = self._parse_relation_string(relation)
                 if target_table:
@@ -307,10 +311,13 @@ class Generator:
                         )
                     )
                     if condition:
-                        notes_parts.append(f"Condition: {condition}")
+                        notes_parts.append(f"**Condition:** `{condition}`")
 
         if notes_parts:
-            col.note = Note("\n".join(notes_parts))
+            # Paragraph break between sections (caption / condition / conditional list)
+            # so Markdown renderers treat them as distinct blocks; bullet lists keep
+            # consecutive lines internally because that's what Markdown bullets need.
+            col.note = Note("\n\n".join(notes_parts))
         return col
 
     def _merge_table_extensions(self) -> None:
@@ -361,13 +368,12 @@ class Generator:
 
             target_table = self._tables.get(ref.target_table)
             if target_table is None:
-                self._append_note(
-                    source_col,
-                    "References "
-                    + ref.target_table
-                    + (f'."{ref.target_field}"' if ref.target_field else "")
-                    + " (cross-package)",
+                target_label = (
+                    f'`{ref.target_table}."{ref.target_field}"`'
+                    if ref.target_field
+                    else f"`{ref.target_table}`"
                 )
+                self._append_note(source_col, f"**References** {target_label} (cross-package)")
                 continue
 
             target_col = None
@@ -376,12 +382,12 @@ class Generator:
             if target_col is None:
                 pk_cols = [c for c in target_table.columns if c.pk]
                 if not pk_cols:
-                    self._append_note(
-                        source_col,
-                        "References "
-                        + ref.target_table
-                        + (f'."{ref.target_field}"' if ref.target_field else ""),
+                    target_label = (
+                        f'`{ref.target_table}."{ref.target_field}"`'
+                        if ref.target_field
+                        else f"`{ref.target_table}`"
                     )
+                    self._append_note(source_col, f"**References** {target_label}")
                     continue
                 target_col = pk_cols[0]
 
@@ -444,7 +450,9 @@ class Generator:
     @staticmethod
     def _append_note(col: Column, line: str) -> None:
         existing = col.note.text if col.note else ""
-        col.note = Note(f"{existing}\n{line}".strip() if existing else line)
+        # Markdown paragraph break (blank line) so the appended note renders as
+        # its own block rather than running into the previous section.
+        col.note = Note(f"{existing}\n\n{line}" if existing else line)
 
     @staticmethod
     def _properties(raw: Any) -> dict[str, Any]:
