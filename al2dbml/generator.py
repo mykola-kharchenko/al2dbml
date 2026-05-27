@@ -143,6 +143,21 @@ class Generator:
             return " "
         return text
 
+    @staticmethod
+    def _enum_item(value_def: dict[str, Any]) -> EnumItem | None:
+        """Build a pydbml ``EnumItem`` from one AL enum value definition.
+
+        Returns ``None`` when the value has no usable ``Name``. AL omits the
+        ``Ordinal`` key when the value is at position 0, so missing -> 0.
+        The ordinal is attached as a DBML note (``[note: '<n>']``) so the
+        integer-to-name mapping that BC stores in SQL is visible in the diagram.
+        """
+        item_name = Generator._enum_item_name(value_def.get("Name"))
+        if item_name is None:
+            return None
+        ordinal = value_def.get("Ordinal", 0)
+        return EnumItem(name=item_name, note=str(ordinal))
+
     def _build_enums(self) -> None:
         for entry in self.symbols.get("EnumTypes") or []:
             name = entry.get("Name")
@@ -153,10 +168,9 @@ class Generator:
             for v in items_raw:
                 if not isinstance(v, dict):
                     continue
-                item_name = self._enum_item_name(v.get("Name"))
-                if item_name is None:
-                    continue
-                items.append(EnumItem(name=item_name))
+                item = self._enum_item(v)
+                if item is not None:
+                    items.append(item)
             if not items:
                 continue
             enum_obj = Enum(name=name, items=items)
@@ -172,10 +186,9 @@ class Generator:
             for v in ext.get("Values") or ext.get("Items") or []:
                 if not isinstance(v, dict):
                     continue
-                item_name = self._enum_item_name(v.get("Name"))
-                if item_name is None:
-                    continue
-                enum_obj.items.append(EnumItem(name=item_name))
+                item = self._enum_item(v)
+                if item is not None:
+                    enum_obj.items.append(item)
 
     def _build_tables(self) -> None:
         for table_def in self.symbols.get("Tables") or []:

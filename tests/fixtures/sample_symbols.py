@@ -27,13 +27,16 @@ def sample_symbols() -> dict[str, Any]:
         "EnumTypes": [
             {
                 "Name": "Customer Type",
-                "Values": [{"Name": "Person"}, {"Name": "Company"}],
+                "Values": [
+                    {"Name": "Person"},
+                    {"Ordinal": 1, "Name": "Company"},
+                ],
             }
         ],
         "EnumExtensionTypes": [
             {
                 "TargetObject": "Customer Type",
-                "Values": [{"Name": "Government"}],
+                "Values": [{"Ordinal": 10, "Name": "Government"}],
             }
         ],
         "Tables": [

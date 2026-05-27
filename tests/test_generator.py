@@ -371,6 +371,22 @@ def test_ref_to_filtered_target_degrades_to_note() -> None:
     assert "cross-package" in dbml.lower()
 
 
+def test_enum_items_carry_ordinal_as_note() -> None:
+    # AL omits Ordinal=0; values from the fixture: Person ordinal 0,
+    # Company ordinal 1, Government ordinal 10 (from the extension).
+    gen = Generator(symbols=sample_symbols())
+    gen.build()
+    items = {i.name: i.note.text for i in gen._enums["Customer Type"].items}
+    assert items == {"Person": "0", "Company": "1", "Government": "10"}
+
+
+def test_enum_ordinals_render_in_dbml() -> None:
+    dbml = Generator(symbols=sample_symbols()).dbml()
+    assert "\"Person\" [note: '0']" in dbml
+    assert "\"Company\" [note: '1']" in dbml
+    assert "\"Government\" [note: '10']" in dbml
+
+
 def test_empty_enum_value_substituted_with_single_space() -> None:
     # AL sometimes encodes the default/blank slot as "" which breaks DBML's
     # parser. We substitute a single space so the slot still appears.
