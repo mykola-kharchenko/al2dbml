@@ -12,7 +12,21 @@ license = { text = "MIT" }
 authors = [
     { name = "Mykola Kharchenko", email = "mykola.kharchenko@outlook.com" },
 ]
-keywords = ["dbml", "business-central", "dynamics-365", "al", "dbdiagram"]
+keywords = [
+    "dbml",
+    "dbdiagram",
+    "dbdocs",
+    "erd",
+    "database-diagram",
+    "schema",
+    "business-central",
+    "dynamics-365",
+    "microsoft-dynamics",
+    "bc",
+    "al",
+    "al-language",
+    "symbol-reference",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
