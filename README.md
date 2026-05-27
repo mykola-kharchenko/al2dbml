@@ -2,6 +2,12 @@
 
 `al2dbml` is a small Python CLI that converts a compiled Microsoft Dynamics 365 Business Central AL package (`.app`) into a [DBML](https://dbml.dbdiagram.io/) schema you can paste straight into [dbdiagram.io](https://dbdiagram.io) or [dbdocs.io](https://dbdocs.io). The pipeline reads `SymbolReference.json` from the `.app` archive (tolerating AL's 40-byte header), normalises tables, extensions, enums, and `TableRelation`s, and emits one valid DBML document with `Table`, `Ref`, `Enum`, and `TableGroup` sections.
 
+## What's new in 0.4.0
+
+- **Enums now live in their own schema** (`meta` by default) instead of pydbml's `public`. BC enums are AL-language metadata that doesn't exist in SQL Server, so a separate schema name from tables (`dbo`) signals the conceptual split. The rendered DBML reads like `Enum "meta"."Customer Type"` declared alongside `Table "dbo"."Customer" { "Type" "meta"."Customer Type" }`.
+- **`--table-schema NAME` and `--enum-schema NAME` CLI flags** — symmetric overrides if `dbo` and `meta` don't suit your model.
+- **Breaking change (Python API only):** `Generator.schema` has been renamed to `Generator.table_schema`; the new `Generator.enum_schema` is independent. The CLI's `--table-schema` is new, behavior under the default is unchanged. Bumping minor to signal this.
+
 ## What's new in 0.3.3
 
 - **Enum items now carry their AL ordinal as a note** — every enum value is rendered as `"Name" [note: '<n>']` so you can read the integer-to-name mapping directly off the diagram. BC stores enum values as integers in SQL, so this is what you need when you see `Type = 2` in a row dump and want to know which entry it was without flipping back to the AL source. `Approval Action` from Base Application, for example, deliberately starts at ordinal 1; you can see that gap in the diagram now.
