@@ -1,5 +1,11 @@
 # al2dbml
 
+[![PyPI version](https://img.shields.io/pypi/v/al2dbml.svg)](https://pypi.org/project/al2dbml/)
+[![Python versions](https://img.shields.io/pypi/pyversions/al2dbml.svg)](https://pypi.org/project/al2dbml/)
+[![CI](https://github.com/mykola-kharchenko/al2dbml/actions/workflows/ci.yml/badge.svg)](https://github.com/mykola-kharchenko/al2dbml/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 `al2dbml` is a small Python CLI that converts a compiled Microsoft Dynamics 365 Business Central AL package (`.app`) into a [DBML](https://dbml.dbdiagram.io/) schema you can paste straight into [dbdiagram.io](https://dbdiagram.io) or [dbdocs.io](https://dbdocs.io). The pipeline reads `SymbolReference.json` from the `.app` archive (tolerating AL's 40-byte header), normalises tables, extensions, enums, and `TableRelation`s, and emits one valid DBML document with `Table`, `Ref`, `Enum`, and `TableGroup` sections.
 
 Release history and per-version notes live in [CHANGELOG.md](CHANGELOG.md).
