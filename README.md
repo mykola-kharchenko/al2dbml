@@ -1,4 +1,4 @@
-# al2dbml
+# AL-to-DBML
 
 [![PyPI version](https://img.shields.io/pypi/v/al2dbml.svg)](https://pypi.org/project/al2dbml/)
 [![Python versions](https://img.shields.io/pypi/pyversions/al2dbml.svg)](https://pypi.org/project/al2dbml/)
