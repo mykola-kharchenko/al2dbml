@@ -2,6 +2,10 @@
 
 `al2dbml` is a small Python CLI that converts a compiled Microsoft Dynamics 365 Business Central AL package (`.app`) into a [DBML](https://dbml.dbdiagram.io/) schema you can paste straight into [dbdiagram.io](https://dbdiagram.io) or [dbdocs.io](https://dbdocs.io). The pipeline reads `SymbolReference.json` from the `.app` archive (tolerating AL's 40-byte header), normalises tables, extensions, enums, and `TableRelation`s, and emits one valid DBML document with `Table`, `Ref`, `Enum`, and `TableGroup` sections.
 
+## What's new in 0.3.2
+
+- **`--stats` is now fast** — on Microsoft's Base Application it went from ~3–5 minutes to ~4 seconds. Two stacked fixes: when `--stats` is the only output requested, we skip the DBML render entirely (it's O(n²)); and we bypass `pydbml.Database.add_reference`'s redundant duplicate-check on every ref we add (we already dedupe upstream by id pair). Generating to a file (`-o`) still pays the pydbml render cost — separate slice on the roadmap.
+
 ## What's new in 0.3.1
 
 - **`al2dbml-validate FILE`** — second console script that parses a DBML file through pydbml and reports syntax errors with line/column. Exit code 0 on success, non-zero on parse error. For the authoritative check matching dbdiagram.io exactly, install [`@dbml/cli`](https://www.npmjs.com/package/@dbml/cli) (`npm i -g @dbml/cli`) and run `dbml2sql FILE --postgres`.
