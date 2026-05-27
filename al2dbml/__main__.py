@@ -86,6 +86,12 @@ def main(
     except KeyError as exc:
         raise click.ClickException(str(exc)) from exc
 
+    # POSIX text-file convention: terminate output with a newline. Without it,
+    # zsh shows a trailing '%' marker after stdout output. pydbml's renderer
+    # does not append one itself.
+    if not rendered.endswith("\n"):
+        rendered = rendered + "\n"
+
     if output is not None:
         output.write_text(rendered, encoding="utf-8")
         click.echo(f"wrote {output} ({len(rendered)} bytes)", err=True)

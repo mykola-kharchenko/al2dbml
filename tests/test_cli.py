@@ -50,7 +50,21 @@ def test_default_output_goes_to_stdout(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.stderr
     assert 'Enum "Customer Type"' in result.stdout
     assert 'TableGroup "Sales"' in result.stdout
+    # POSIX convention: end with exactly one newline. Without it, zsh shows
+    # a trailing '%' marker. With two, we'd be producing extra blank lines.
+    assert result.stdout.endswith("\n")
     assert not result.stdout.endswith("\n\n")
+
+
+def test_file_output_ends_with_single_newline(tmp_path: Path) -> None:
+    app = _make_app(tmp_path)
+    out = tmp_path / "schema.dbml"
+    runner = CliRunner()
+    result = runner.invoke(main, [str(app), "-o", str(out)])
+    assert result.exit_code == 0, result.stderr
+    body = out.read_text(encoding="utf-8")
+    assert body.endswith("\n")
+    assert not body.endswith("\n\n")
 
 
 def test_explicit_group_rule(tmp_path: Path) -> None:
