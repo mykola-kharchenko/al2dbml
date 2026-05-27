@@ -4,6 +4,13 @@ All notable changes to `al2dbml` land here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.3] - 2026-05-27
+
+### Fixed
+
+- Long IF/ELSE conditional references no longer collapse into an unreadable wall of `•`-separated text. Each branch now goes on its own visual line via inline HTML `<br>` (the only line-break mechanism that survives pydbml's continuation-line indenting), so a six-branch field renders as a real list on dbdiagram.io / dbdocs.io.
+- Cross-package and missing-PK `**References** ...` suffixes are now deduplicated per source column. Previously a multi-branch IF/ELSE whose branches all pointed at the same missing target produced N identical "(cross-package)" notes on the column.
+
 ## [0.4.2] - 2026-05-27
 
 ### Fixed
@@ -110,6 +117,7 @@ Initial release.
 - `al2dbml` console script with `-o`, `--merge-extensions/--no-merge-extensions`, `-g`, `--no-groups`, `--no-auto-groups`, `--min-group-size`, `--version`, `-h/--help`.
 - Public Python API: `Generator`, `generate`, `GroupingConfig`, `__version__`.
 
+[0.4.3]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.3
 [0.4.2]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.2
 [0.4.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.1
 [0.4.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.0
