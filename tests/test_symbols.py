@@ -120,6 +120,75 @@ def test_load_only_recurses_one_level_deep(tmp_path: Path) -> None:
         load_symbols(app)
 
 
+def test_load_flattens_namespace_nested_tables(tmp_path: Path) -> None:
+    # Modern BC nests Tables / EnumTypes inside Namespaces; the loader should
+    # hoist them all to the top level so the generator stays namespace-agnostic.
+    payload = {
+        "RuntimeVersion": "17.0",
+        "Tables": [{"Name": "TopLegacy"}],
+        "EnumTypes": [{"Name": "TopEnum"}],
+        "Namespaces": [
+            {
+                "Name": "Microsoft.Finance",
+                "Tables": [{"Name": "G/L Entry"}, {"Name": "G/L Account"}],
+                "EnumTypes": [{"Name": "Account Type"}],
+                "Namespaces": [
+                    {
+                        "Name": "Microsoft.Finance.GeneralLedger",
+                        "Tables": [{"Name": "G/L Setup"}],
+                        "TableExtensions": [{"TargetObject": "G/L Account"}],
+                        "EnumExtensionTypes": [{"TargetObject": "Account Type"}],
+                    }
+                ],
+            },
+            {
+                "Name": "Microsoft.Sales",
+                "Tables": [{"Name": "Sales Header"}, {"Name": "Sales Line"}],
+            },
+        ],
+    }
+    app = _write(
+        tmp_path,
+        "ns.app",
+        _build_zip({"SymbolReference.json": json.dumps(payload).encode()}),
+    )
+
+    data = load_symbols(app)
+    table_names = sorted(t["Name"] for t in data["Tables"])
+    assert table_names == [
+        "G/L Account",
+        "G/L Entry",
+        "G/L Setup",
+        "Sales Header",
+        "Sales Line",
+        "TopLegacy",
+    ]
+    enum_names = sorted(e["Name"] for e in data["EnumTypes"])
+    assert enum_names == ["Account Type", "TopEnum"]
+    assert len(data["TableExtensions"]) == 1
+    assert len(data["EnumExtensionTypes"]) == 1
+    # Non-flattened keys are preserved untouched
+    assert data["RuntimeVersion"] == "17.0"
+    assert data["Namespaces"]  # original namespace tree still present
+
+
+def test_load_handles_no_namespaces(tmp_path: Path) -> None:
+    # Legacy BC packages with only top-level arrays must still work.
+    payload = {
+        "Tables": [{"Name": "Customer"}],
+        "EnumTypes": [{"Name": "Customer Type"}],
+    }
+    app = _write(
+        tmp_path,
+        "legacy.app",
+        _build_zip({"SymbolReference.json": json.dumps(payload).encode()}),
+    )
+
+    data = load_symbols(app)
+    assert [t["Name"] for t in data["Tables"]] == ["Customer"]
+    assert [e["Name"] for e in data["EnumTypes"]] == ["Customer Type"]
+
+
 def test_load_prefers_top_level_symbol_over_nested_app(tmp_path: Path) -> None:
     # If the outer archive has both a SymbolReference.json and a nested .app,
     # the top-level symbols win (no surprise recursion).

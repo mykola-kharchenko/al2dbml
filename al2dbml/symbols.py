@@ -9,6 +9,11 @@ from typing import Any
 _AL_HEADER_BYTES = 40
 _SYMBOL_REFERENCE_NAME = "symbolreference.json"
 
+# Object collections that the generator consumes at the top level. Modern BC
+# nests these inside Namespaces[...].Namespaces[...]; we flatten them so the
+# generator can stay namespace-agnostic.
+_FLATTENED_KEYS = ("Tables", "TableExtensions", "EnumTypes", "EnumExtensionTypes")
+
 
 def load_symbols(app_path: str | Path) -> dict[str, Any]:
     """Load and parse ``SymbolReference.json`` from a compiled AL ``.app`` package.
@@ -68,7 +73,44 @@ def _load_symbols_from_bytes(raw: bytes, *, depth: int = 0) -> dict[str, Any]:
 
     if payload.startswith(b"\xef\xbb\xbf"):
         payload = payload[3:]
-    return json.loads(payload.decode("utf-8"))
+    return _flatten_namespaces(json.loads(payload.decode("utf-8")))
+
+
+def _flatten_namespaces(data: dict[str, Any]) -> dict[str, Any]:
+    """Hoist namespace-nested object collections to the top level.
+
+    Modern Business Central (v25+) organizes objects by namespace, so the schema looks
+    like ``Namespaces[i].Namespaces[j].Tables[k]`` recursively. Older BC put everything
+    at the top level. This walker visits the namespace tree once and concatenates every
+    ``Tables`` / ``TableExtensions`` / ``EnumTypes`` / ``EnumExtensionTypes`` array it
+    finds into the corresponding top-level array, so downstream code sees one flat
+    shape regardless of which compiler version produced the file.
+    """
+    if not isinstance(data, dict):
+        return data
+
+    collected: dict[str, list[Any]] = {key: [] for key in _FLATTENED_KEYS}
+
+    def walk(node: Any) -> None:
+        if not isinstance(node, dict):
+            return
+        for key in _FLATTENED_KEYS:
+            entries = node.get(key)
+            if isinstance(entries, list):
+                collected[key].extend(entries)
+        for child in node.get("Namespaces") or []:
+            walk(child)
+
+    walk(data)
+
+    result = dict(data)
+    for key, items in collected.items():
+        # Only set the key when it was already present in the input or when
+        # namespace walking actually found something; otherwise leave the
+        # output dict alone so legacy/empty-shape inputs keep their shape.
+        if items or key in data:
+            result[key] = items
+    return result
 
 
 def _find_symbol_member(archive: zipfile.ZipFile) -> str:

@@ -260,6 +260,11 @@ class Generator:
             self.db.add(stub)
 
     def _resolve_references(self) -> None:
+        # Real-world AL has fields with multiple TableRelation clauses that resolve to
+        # the same (source_col, target_col) pair, and IF/ELSE branches occasionally
+        # point two branches at the same target. pydbml rejects duplicate Refs, so we
+        # dedupe by (source_col id, target_col id) before adding.
+        seen: set[tuple[int, int]] = set()
         for ref in self._pending_refs:
             source_col = self._columns.get((ref.source_table, ref.source_field))
             if source_col is None:
@@ -291,6 +296,10 @@ class Generator:
                     continue
                 target_col = pk_cols[0]
 
+            key = (id(source_col), id(target_col))
+            if key in seen:
+                continue
+            seen.add(key)
             self.db.add(Reference(type=">", col1=source_col, col2=target_col))
 
     def _build_groups(self) -> None:
