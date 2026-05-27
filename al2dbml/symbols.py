@@ -91,17 +91,30 @@ def _flatten_namespaces(data: dict[str, Any]) -> dict[str, Any]:
 
     collected: dict[str, list[Any]] = {key: [] for key in _FLATTENED_KEYS}
 
-    def walk(node: Any) -> None:
+    def walk(node: Any, namespace: str) -> None:
         if not isinstance(node, dict):
             return
         for key in _FLATTENED_KEYS:
             entries = node.get(key)
-            if isinstance(entries, list):
-                collected[key].extend(entries)
+            if not isinstance(entries, list):
+                continue
+            for entry in entries:
+                # Tag each object with the namespace it lived under so the
+                # generator can later group tables by namespace without
+                # having to re-walk the tree. Items at the top level get an
+                # empty namespace; nested ones get the dotted path.
+                if isinstance(entry, dict) and "__namespace" not in entry:
+                    entry["__namespace"] = namespace
+                collected[key].append(entry)
         for child in node.get("Namespaces") or []:
-            walk(child)
+            child_name = child.get("Name") if isinstance(child, dict) else None
+            if namespace and child_name:
+                next_ns = f"{namespace}.{child_name}"
+            else:
+                next_ns = child_name or namespace
+            walk(child, next_ns)
 
-    walk(data)
+    walk(data, "")
 
     result = dict(data)
     for key, items in collected.items():

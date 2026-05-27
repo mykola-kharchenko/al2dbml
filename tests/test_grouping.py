@@ -49,7 +49,7 @@ def test_first_matching_rule_wins() -> None:
 
 
 def test_no_auto_fallback_drops_unmatched_tables() -> None:
-    config = GroupingConfig(rules={"Sales": ["Sales*"]}, auto_fallback=False)
+    config = GroupingConfig(rules={"Sales": ["Sales*"]}, source="none")
     groups = build_table_groups(
         [_t("Sales Header"), _t("Sales Line"), _t("Customer")],
         config,
@@ -106,3 +106,56 @@ def test_parse_rule_strings_trims_whitespace() -> None:
 def test_parse_rule_strings_rejects_malformed(bad: str) -> None:
     with pytest.raises(ValueError):
         parse_rule_strings([bad])
+
+
+def test_namespace_source_groups_by_last_segment() -> None:
+    config = GroupingConfig(source="namespace")
+    tables = [_t("G/L Entry"), _t("G/L Account"), _t("Sales Header"), _t("Sales Line")]
+    namespaces = {
+        "G/L Entry": "Microsoft.Finance.GeneralLedger",
+        "G/L Account": "Microsoft.Finance.GeneralLedger",
+        "Sales Header": "Microsoft.Sales.Documents",
+        "Sales Line": "Microsoft.Sales.Documents",
+    }
+    groups = build_table_groups(tables, config, namespaces=namespaces)
+    assert [g.name for g in groups] == ["Documents", "GeneralLedger"]
+
+
+def test_namespace_source_falls_back_to_first_word_when_no_namespace() -> None:
+    # Legacy/unnamespaced tables must still be groupable under source="namespace".
+    config = GroupingConfig(source="namespace")
+    tables = [_t("Sales Header"), _t("Sales Line")]
+    groups = build_table_groups(tables, config, namespaces={})
+    assert [g.name for g in groups] == ["Sales"]
+
+
+def test_word_source_ignores_namespace() -> None:
+    config = GroupingConfig(source="word")
+    tables = [_t("Sales Header"), _t("Sales Line")]
+    namespaces = {
+        "Sales Header": "Microsoft.Sales.Documents",
+        "Sales Line": "Microsoft.Sales.Documents",
+    }
+    groups = build_table_groups(tables, config, namespaces=namespaces)
+    # source=word means we ignore namespace and use first whitespace word
+    assert [g.name for g in groups] == ["Sales"]
+
+
+def test_explicit_rule_wins_over_namespace() -> None:
+    config = GroupingConfig(
+        rules={"Documents": ["Sales*", "Purch*"]},
+        source="namespace",
+    )
+    tables = [_t("Sales Header"), _t("Sales Line"), _t("Purchase Header")]
+    namespaces = {
+        "Sales Header": "Microsoft.Sales.Documents",
+        "Sales Line": "Microsoft.Sales.Documents",
+        "Purchase Header": "Microsoft.Purchases.Documents",
+    }
+    groups = build_table_groups(tables, config, namespaces=namespaces)
+    assert [g.name for g in groups] == ["Documents"]
+    assert {t.name for t in groups[0].items} == {
+        "Sales Header",
+        "Sales Line",
+        "Purchase Header",
+    }

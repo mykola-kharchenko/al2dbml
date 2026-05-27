@@ -54,6 +54,7 @@ class Generator:
     _tables: dict[str, Table] = field(init=False, default_factory=dict)
     _columns: dict[tuple[str, str], Column] = field(init=False, default_factory=dict)
     _pending_refs: list[_PendingRef] = field(init=False, default_factory=list)
+    _table_namespaces: dict[str, str] = field(init=False, default_factory=dict)
     _built: bool = field(init=False, default=False)
 
     @classmethod
@@ -156,6 +157,7 @@ class Generator:
                 continue
             table = self._make_table(table_def)
             self._tables[name] = table
+            self._table_namespaces[name] = str(table_def.get("__namespace") or "")
             self.db.add(table)
 
     def _make_table(self, table_def: dict[str, Any]) -> Table:
@@ -344,7 +346,9 @@ class Generator:
             self.db.add(Reference(type=">", col1=source_col, col2=target_col))
 
     def _build_groups(self) -> None:
-        for tg in build_table_groups(self._tables.values(), self.grouping):
+        for tg in build_table_groups(
+            self._tables.values(), self.grouping, namespaces=self._table_namespaces
+        ):
             self.db.add(tg)
 
     @staticmethod

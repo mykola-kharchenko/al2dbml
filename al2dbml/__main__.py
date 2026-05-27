@@ -43,10 +43,24 @@ from .grouping import GroupingConfig, parse_rule_strings
     help="Do not emit any TableGroup blocks.",
 )
 @click.option(
+    "--group-by",
+    "group_by",
+    type=click.Choice(["namespace", "word", "none"], case_sensitive=False),
+    default="namespace",
+    show_default=True,
+    help=(
+        "How to derive group names when no explicit --group rule matches. "
+        "'namespace' uses the last segment of the AL namespace path "
+        "(falls back to first-word for un-namespaced tables); "
+        "'word' uses the first whitespace-separated word; "
+        "'none' disables auto-grouping entirely."
+    ),
+)
+@click.option(
     "--no-auto-groups",
     is_flag=True,
     default=False,
-    help="Disable the first-word auto-grouping fallback.",
+    help="Deprecated alias for --group-by none.",
 )
 @click.option(
     "--min-group-size",
@@ -69,6 +83,7 @@ def main(
     merge_extensions: bool,
     groups: tuple[str, ...],
     no_groups: bool,
+    group_by: str,
     no_auto_groups: bool,
     min_group_size: int,
     show_stats: bool,
@@ -79,10 +94,11 @@ def main(
     except ValueError as exc:
         raise click.BadParameter(str(exc), param_hint="-g/--group") from exc
 
+    source = "none" if no_auto_groups else group_by.lower()
     grouping = GroupingConfig(
         enabled=not no_groups,
         rules=rules,
-        auto_fallback=not no_auto_groups,
+        source=source,  # type: ignore[arg-type]
         min_group_size=min_group_size,
     )
 
