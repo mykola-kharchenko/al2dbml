@@ -4,6 +4,12 @@ All notable changes to `al2dbml` land here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] - 2026-05-27
+
+### Changed
+
+- Column notes are now rendered as Markdown so dbdiagram.io and dbdocs.io display them with bold labels, code spans for AL expressions, and bullet lists for `IF/ELSE` branches. Cross-package and condition lines become e.g. `` **References** `Customer."No."` (cross-package) `` and `` **Condition:** `("Blocked"=CONST(" "))` ``; multi-branch conditional references render as a real bullet list under a `**Conditional reference:**` header. pydbml round-trip parsing still succeeds.
+
 ## [0.4.0] - 2026-05-27
 
 ### Changed
@@ -94,6 +100,7 @@ Initial release.
 - `al2dbml` console script with `-o`, `--merge-extensions/--no-merge-extensions`, `-g`, `--no-groups`, `--no-auto-groups`, `--min-group-size`, `--version`, `-h/--help`.
 - Public Python API: `Generator`, `generate`, `GroupingConfig`, `__version__`.
 
+[0.4.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.1
 [0.4.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.0
 [0.3.3]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.3.3
 [0.3.2]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.3.2
