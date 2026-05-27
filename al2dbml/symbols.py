@@ -34,14 +34,36 @@ def load_symbols(app_path: str | Path) -> dict[str, Any]:
     if not path.is_file():
         raise FileNotFoundError(f"AL package not found: {path}")
 
-    raw = path.read_bytes()
+    return _load_symbols_from_bytes(path.read_bytes())
+
+
+def _load_symbols_from_bytes(raw: bytes, *, depth: int = 0) -> dict[str, Any]:
+    """Open ``raw`` as an AL ZIP and return its decoded ``SymbolReference.json``.
+
+    Handles three real-world shapes:
+
+    1. A plain ZIP with ``SymbolReference.json`` at the top level (or nested under a
+       subdirectory).
+    2. A ZIP prefixed with the 40-byte AL compiler header; we strip and retry.
+    3. A "Ready-To-Run" wrapper that contains a nested ``.app`` (plus pre-compiled DLLs);
+       we recurse into the nested package exactly once.
+    """
     try:
         archive = zipfile.ZipFile(io.BytesIO(raw))
     except zipfile.BadZipFile:
         archive = zipfile.ZipFile(io.BytesIO(raw[_AL_HEADER_BYTES:]))
 
     with archive:
-        member = _find_symbol_member(archive)
+        try:
+            member = _find_symbol_member(archive)
+        except KeyError:
+            # Ready-To-Run packages bundle the actual .app alongside DLLs; recurse once.
+            if depth >= 1:
+                raise
+            nested = _find_nested_app(archive)
+            if nested is None:
+                raise
+            return _load_symbols_from_bytes(archive.read(nested), depth=depth + 1)
         payload = archive.read(member)
 
     if payload.startswith(b"\xef\xbb\xbf"):
@@ -58,3 +80,11 @@ def _find_symbol_member(archive: zipfile.ZipFile) -> str:
     raise KeyError(
         f"SymbolReference.json not found in AL package. First entries in archive: [{sample}]"
     )
+
+
+def _find_nested_app(archive: zipfile.ZipFile) -> str | None:
+    """Return the first archive member whose filename ends with ``.app``, or ``None``."""
+    for name in archive.namelist():
+        if name.lower().endswith(".app"):
+            return name
+    return None

@@ -83,3 +83,55 @@ def test_path_argument_accepts_string(tmp_path: Path) -> None:
     app = _write(tmp_path, "str.app", _build_zip({"SymbolReference.json": payload}))
 
     assert load_symbols(str(app)) == {"Tables": ["str"]}
+
+
+def test_load_recurses_into_ready_to_run_nested_app(tmp_path: Path) -> None:
+    # Ready-To-Run packages wrap the real .app inside an outer ZIP that also
+    # carries a manifest and pre-compiled DLLs. The SymbolReference.json lives
+    # in the nested .app, not at the top of the outer archive.
+    inner_payload = json.dumps({"Tables": ["from-nested"]}).encode("utf-8")
+    inner_app_bytes = _build_zip({"SymbolReference.json": inner_payload})
+    outer = _build_zip(
+        {
+            "readytorunappmanifest.json": b"{}",
+            "abcd1234_1.0.0.0_28_28014.app": inner_app_bytes,
+            "publishedartifacts/some.dll": b"\x00\x01\x02",
+            "[Content_Types].xml": b"<Types/>",
+        }
+    )
+    app = _write(tmp_path, "r2r.app", outer)
+
+    assert load_symbols(app) == {"Tables": ["from-nested"]}
+
+
+def test_load_only_recurses_one_level_deep(tmp_path: Path) -> None:
+    # Nested .app that itself has no SymbolReference.json should propagate
+    # the KeyError, not recurse infinitely.
+    empty_inner = _build_zip({"README.txt": b"no symbols here"})
+    outer = _build_zip(
+        {
+            "readytorunappmanifest.json": b"{}",
+            "inner.app": empty_inner,
+        }
+    )
+    app = _write(tmp_path, "double.app", outer)
+
+    with pytest.raises(KeyError):
+        load_symbols(app)
+
+
+def test_load_prefers_top_level_symbol_over_nested_app(tmp_path: Path) -> None:
+    # If the outer archive has both a SymbolReference.json and a nested .app,
+    # the top-level symbols win (no surprise recursion).
+    top_payload = json.dumps({"Tables": ["from-top"]}).encode("utf-8")
+    inner_payload = json.dumps({"Tables": ["from-nested"]}).encode("utf-8")
+    inner_app_bytes = _build_zip({"SymbolReference.json": inner_payload})
+    outer = _build_zip(
+        {
+            "SymbolReference.json": top_payload,
+            "inner.app": inner_app_bytes,
+        }
+    )
+    app = _write(tmp_path, "both.app", outer)
+
+    assert load_symbols(app) == {"Tables": ["from-top"]}
