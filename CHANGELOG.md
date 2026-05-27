@@ -4,6 +4,16 @@ All notable changes to `al2dbml` land here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.2] - 2026-05-27
+
+### Fixed
+
+- Markdown in column notes now actually renders. pydbml's table renderer applies a 4-space indent across the joined column block, which leaked into every continuation line of a multi-line `[note: '''...''']` and made Markdown parsers treat the content as a code block (literal `**Condition:**`, no bullets). Notes are now emitted on a single physical line with `—` between sections and `•` between conditional-reference branches, so bold labels and code spans render correctly on dbdiagram.io and dbdocs.io.
+
+### Changed
+
+- A field's AL `Caption` is no longer emitted as a column note when it equals the field name. ~96% of Base Application fields have `caption == name`, so the previous behaviour added pure visual noise.
+
 ## [0.4.1] - 2026-05-27
 
 ### Changed
@@ -100,6 +110,7 @@ Initial release.
 - `al2dbml` console script with `-o`, `--merge-extensions/--no-merge-extensions`, `-g`, `--no-groups`, `--no-auto-groups`, `--min-group-size`, `--version`, `-h/--help`.
 - Public Python API: `Generator`, `generate`, `GroupingConfig`, `__version__`.
 
+[0.4.2]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.2
 [0.4.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.1
 [0.4.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.0
 [0.3.3]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.3.3
