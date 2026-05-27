@@ -70,6 +70,26 @@ from .grouping import GroupingConfig, parse_rule_strings
     help="Drop groups containing fewer than this many tables.",
 )
 @click.option(
+    "--table-schema",
+    "table_schema",
+    metavar="NAME",
+    default="dbo",
+    show_default=True,
+    help="Schema to render Table declarations under. BC's SQL Server uses 'dbo'.",
+)
+@click.option(
+    "--enum-schema",
+    "enum_schema",
+    metavar="NAME",
+    default="meta",
+    show_default=True,
+    help=(
+        "Schema to render Enum declarations under. BC enums are AL-language "
+        "metadata, not SQL objects, so by default they live in 'meta' separate "
+        "from the 'dbo' table schema."
+    ),
+)
+@click.option(
     "--include",
     "includes",
     multiple=True,
@@ -105,6 +125,8 @@ def main(
     group_by: str,
     no_auto_groups: bool,
     min_group_size: int,
+    table_schema: str,
+    enum_schema: str,
     includes: tuple[str, ...],
     excludes: tuple[str, ...],
     show_stats: bool,
@@ -133,6 +155,8 @@ def main(
             app,
             merge_extensions=merge_extensions,
             grouping=grouping,
+            table_schema=table_schema,
+            enum_schema=enum_schema,
             includes=list(includes),
             excludes=list(excludes),
         )

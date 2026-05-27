@@ -48,7 +48,7 @@ def test_default_output_goes_to_stdout(tmp_path: Path) -> None:
     runner = CliRunner()
     result = runner.invoke(main, [str(app)])
     assert result.exit_code == 0, result.stderr
-    assert 'Enum "Customer Type"' in result.stdout
+    assert 'Enum "meta"."Customer Type"' in result.stdout
     assert 'TableGroup "Sales"' in result.stdout
     # POSIX convention: end with exactly one newline. Without it, zsh shows
     # a trailing '%' marker. With two, we'd be producing extra blank lines.

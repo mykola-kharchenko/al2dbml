@@ -47,7 +47,8 @@ class Generator:
     symbols: dict[str, Any]
     merge_extensions: bool = True
     grouping: GroupingConfig = field(default_factory=GroupingConfig)
-    schema: str = "dbo"
+    table_schema: str = "dbo"
+    enum_schema: str = "meta"
     includes: list[str] = field(default_factory=list)
     excludes: list[str] = field(default_factory=list)
     db: Database = field(default_factory=Database)
@@ -173,7 +174,12 @@ class Generator:
                     items.append(item)
             if not items:
                 continue
-            enum_obj = Enum(name=name, items=items)
+            # Enums get their own schema (default 'meta') rather than sharing
+            # the table schema. BC enums are AL-language metadata that doesn't
+            # actually exist in SQL Server, so a separate namespace tells the
+            # reader 'this is descriptor, not data' while still being a real
+            # DBML object the column types can reference unambiguously.
+            enum_obj = Enum(name=name, schema=self.enum_schema, items=items)
             self._enums[name] = enum_obj
             self.db.add(enum_obj)
 
@@ -205,9 +211,9 @@ class Generator:
         props = self._properties(table_def.get("Properties"))
         caption = props.get("Caption")
         table = (
-            Table(name=name, schema=self.schema, note=caption)
+            Table(name=name, schema=self.table_schema, note=caption)
             if caption
-            else Table(name=name, schema=self.schema)
+            else Table(name=name, schema=self.table_schema)
         )
 
         keys = table_def.get("Keys") or []
@@ -316,7 +322,7 @@ class Generator:
             if table is None:
                 table = Table(
                     name=target,
-                    schema=self.schema,
+                    schema=self.table_schema,
                     note=f"Stub for cross-package target {target}",
                 )
                 self._tables[target] = table
@@ -333,7 +339,7 @@ class Generator:
             if not target:
                 continue
             stub_name = f"{target} (Extension)"
-            stub = Table(name=stub_name, schema=self.schema, note=f"Extension of {target}")
+            stub = Table(name=stub_name, schema=self.table_schema, note=f"Extension of {target}")
             for f in ext.get("Fields") or []:
                 col = self._make_column(stub_name, f, set())
                 if col is not None:

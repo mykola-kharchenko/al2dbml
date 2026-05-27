@@ -13,7 +13,7 @@ def _build(**kwargs) -> str:
 
 def test_enum_includes_extension_values() -> None:
     dbml = _build()
-    assert 'Enum "Customer Type"' in dbml
+    assert 'Enum "meta"."Customer Type"' in dbml
     assert "Person" in dbml
     assert "Company" in dbml
     assert "Government" in dbml
@@ -147,23 +147,32 @@ def test_dbml_is_idempotent() -> None:
     assert first == second
 
 
-def test_default_schema_is_dbo() -> None:
+def test_default_table_schema_is_dbo() -> None:
     gen = Generator(symbols=sample_symbols())
     gen.build()
     for name in ("Customer", "Sales Header", "Sales Line"):
         assert gen._tables[name].schema == "dbo"
 
 
-def test_schema_override_is_respected() -> None:
-    gen = Generator(symbols=sample_symbols(), schema="custom")
+def test_table_schema_override_is_respected() -> None:
+    gen = Generator(symbols=sample_symbols(), table_schema="custom")
     gen.build()
     assert gen._tables["Customer"].schema == "custom"
 
 
-def test_extension_stub_carries_configured_schema() -> None:
-    gen = Generator(symbols=sample_symbols(), merge_extensions=False, schema="dbo")
+def test_extension_stub_carries_configured_table_schema() -> None:
+    gen = Generator(symbols=sample_symbols(), merge_extensions=False, table_schema="dbo")
     gen.build()
     assert gen._tables["Customer (Extension)"].schema == "dbo"
+
+
+def test_table_and_enum_schemas_are_independent() -> None:
+    # Renaming the table schema must not bleed into the enum schema and
+    # vice versa. They are deliberately separate dataclass fields.
+    gen = Generator(symbols=sample_symbols(), table_schema="alpha", enum_schema="beta")
+    gen.build()
+    assert gen._tables["Customer"].schema == "alpha"
+    assert gen._enums["Customer Type"].schema == "beta"
 
 
 def test_not_null_flag_set_when_notblank_true() -> None:
@@ -369,6 +378,27 @@ def test_ref_to_filtered_target_degrades_to_note() -> None:
     assert 'Table "dbo"."Customer"' not in dbml
     # The cross-package note path runs when the target table is missing.
     assert "cross-package" in dbml.lower()
+
+
+def test_default_enum_schema_is_meta() -> None:
+    # Enums live in their own schema by default ('meta') because BC enums are
+    # AL-language metadata, not SQL objects. Separate from the table schema.
+    gen = Generator(symbols=sample_symbols())
+    gen.build()
+    assert gen._enums["Customer Type"].schema == "meta"
+
+
+def test_enum_schema_override_is_respected() -> None:
+    gen = Generator(symbols=sample_symbols(), enum_schema="custom")
+    gen.build()
+    assert gen._enums["Customer Type"].schema == "custom"
+
+
+def test_enum_rendered_with_meta_schema_prefix() -> None:
+    dbml = Generator(symbols=sample_symbols()).dbml()
+    assert 'Enum "meta"."Customer Type"' in dbml
+    # And the column type that references the enum carries the same prefix
+    assert '"Type" "meta"."Customer Type"' in dbml
 
 
 def test_enum_items_carry_ordinal_as_note() -> None:
