@@ -4,11 +4,60 @@
 
 ## Install
 
+Python 3.10+ is required. The runtime depends only on [`click`](https://click.palletsprojects.com/) and [`pydbml`](https://github.com/Vanderhoof/PyDBML).
+
+### With pipx (recommended for a global CLI)
+
+[`pipx`](https://pipx.pypa.io/) installs CLI tools into isolated environments and puts the entry point on your `PATH`, so `al2dbml` is available everywhere without polluting your system Python.
+
 ```bash
-pip install -e ".[dev]"
+# Fedora / RHEL / CentOS
+sudo dnf install pipx
+pipx ensurepath
+
+pipx install al2dbml
 ```
 
-Python 3.10+ is required. The runtime depends only on [`click`](https://click.palletsprojects.com/) and [`pydbml`](https://github.com/Vanderhoof/PyDBML).
+```bash
+# macOS (Homebrew)
+brew install pipx
+pipx ensurepath
+
+pipx install al2dbml
+```
+
+```bash
+# Debian / Ubuntu
+sudo apt install pipx
+pipx ensurepath
+
+pipx install al2dbml
+```
+
+Upgrade later with `pipx upgrade al2dbml`, uninstall with `pipx uninstall al2dbml`.
+
+### With uv
+
+If you already use [`uv`](https://docs.astral.sh/uv/), its tool runner does the same job:
+
+```bash
+uv tool install al2dbml
+```
+
+### With plain pip
+
+Works inside an activated virtualenv, or as `pip install --user al2dbml` for a user-local install. On modern distros that mark system Python as externally-managed (PEP 668), prefer pipx instead.
+
+```bash
+pip install al2dbml
+```
+
+### Verify
+
+```bash
+al2dbml --version
+al2dbml --help
+```
 
 ## Quickstart
 
@@ -62,13 +111,14 @@ gen = Generator.from_app(
 print(gen.dbml())
 ```
 
-## Limitations (0.1.0)
+## Limitations
 
 - FlowFields are treated as regular fields — the underlying CalcFormula is not interpreted.
 - Obsolete fields are emitted alongside active ones; no filtering by `ObsoleteState`.
 - Multi-field primary keys are represented as multiple `[pk]` flags rather than a composite index, matching DBML's single-PK convention.
+- Multi-column secondary keys are not yet emitted as DBML indexes; only single-column secondary keys are surfaced (as `[unique]` on the column).
 - Cross-package references (table relations that point to a table outside the current `.app`) are preserved as notes on the source column, since the target table is not present in the diagram.
-- Complex `IF (...) ... ELSE ...` conditional `TableRelation` expressions fall back to a note rather than a fully-modeled reference.
+- `IF (...) ... ELSE IF (...) ... ELSE ...` conditional `TableRelation` expressions are parsed into one DBML `Ref` per resolved branch, with each branch's condition recorded in the source column's note. Branches whose target table is missing from the current `.app` degrade to notes only.
 
 ## Development
 
