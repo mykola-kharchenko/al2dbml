@@ -6,57 +6,48 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-`al2dbml` is a small Python CLI that converts a compiled Microsoft Dynamics 365 Business Central AL package (`.app`) into a [DBML](https://dbml.dbdiagram.io/) schema you can paste straight into [dbdiagram.io](https://dbdiagram.io) or [dbdocs.io](https://dbdocs.io). The pipeline reads `SymbolReference.json` from the `.app` archive (tolerating AL's 40-byte header), normalises tables, extensions, enums, and `TableRelation`s, and emits one valid DBML document with `Table`, `Ref`, `Enum`, and `TableGroup` sections.
+`al2dbml` turns a compiled Microsoft Dynamics 365 Business Central AL package (`.app`) into a [DBML](https://dbml.dbdiagram.io/) schema you can paste straight into [dbdiagram.io](https://dbdiagram.io) or push to [dbdocs.io](https://dbdocs.io). It reads `SymbolReference.json` from the archive (tolerating AL's 40-byte header and Ready-To-Run wrappers), normalises tables, table extensions, enums, and `TableRelation`s, and emits one valid DBML document with `Project`, `Table`, `Ref`, `Enum`, and `TableGroup` blocks.
 
-Release history and per-version notes live in [CHANGELOG.md](CHANGELOG.md).
+Sample output:
+
+```dbml
+Project "MyApp" {
+    database_type: 'MSSQL'
+    Note { '''MyApp 1.0.0.0 by ACME''' }
+}
+
+Table "dbo"."Customer" {
+    "No." varchar(20) [pk, note: '"No."']
+    "Name" varchar(100)
+    "Customer Posting Group" varchar(20)
+}
+
+Ref { "dbo"."Customer"."Customer Posting Group" > "dbo"."Customer Posting Group"."Code" }
+
+TableGroup "Sales" { "Sales Header" "Sales Line" }
+```
+
+Release notes live in [CHANGELOG.md](CHANGELOG.md).
 
 ## Install
 
-Python 3.10+ is required. The runtime depends only on [`click`](https://click.palletsprojects.com/) and [`pydbml`](https://github.com/Vanderhoof/PyDBML).
-
-### Recommended: `uv tool install`
-
-[`uv`](https://docs.astral.sh/uv/) installs CLI tools into isolated environments and puts the entry point on your `PATH`, so `al2dbml` is available globally without touching your system Python.
+Python 3.10+. Runtime depends only on [`click`](https://click.palletsprojects.com/), [`pydbml`](https://github.com/Vanderhoof/PyDBML), and [`PyYAML`](https://pyyaml.org/) (for the optional aldoc overlay).
 
 ```bash
-uv tool install al2dbml
+uv tool install al2dbml     # recommended — isolated environment, on PATH
+pipx install al2dbml        # also fine
+pip install al2dbml         # works inside an activated venv
 ```
 
-If you don't already have `uv`:
+If you don't have `uv`:
 
 ```bash
-# Fedora / RHEL / CentOS
-sudo dnf install uv
-
-# macOS (Homebrew)
-brew install uv
-
-# Anywhere (standalone installer)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+sudo dnf install uv                              # Fedora / RHEL
+brew install uv                                  # macOS
+curl -LsSf https://astral.sh/uv/install.sh | sh  # anywhere
 ```
 
-Upgrade later with `uv tool upgrade al2dbml`, uninstall with `uv tool uninstall al2dbml`.
-
-### Alternative: pipx
-
-```bash
-pipx install al2dbml
-```
-
-### Alternative: plain pip
-
-Works inside an activated virtualenv. On modern distros that mark system Python as externally-managed (PEP 668), prefer `uv tool` or `pipx` instead.
-
-```bash
-pip install al2dbml
-```
-
-### Verify
-
-```bash
-al2dbml --version
-al2dbml --help
-```
+Upgrade with `uv tool upgrade al2dbml`. Verify with `al2dbml --version`.
 
 ## Quickstart
 
@@ -64,89 +55,107 @@ al2dbml --help
 al2dbml MyApp.app -o schema.dbml
 ```
 
-Drop `schema.dbml` into <https://dbdiagram.io>. Without `-o`, the DBML is streamed to stdout so you can pipe it elsewhere.
+That's the whole workflow. Drop `schema.dbml` into <https://dbdiagram.io>, or push it to dbdocs:
 
 ```bash
-al2dbml MyApp.app | less
+npx -y dbdocs build schema.dbml
 ```
 
-## Grouping
+Without `-o` the DBML streams to stdout so you can pipe it anywhere.
 
-By default tables are bucketed into `TableGroup`s by the last segment of their AL namespace (so `Microsoft.Finance.GeneralLedger` -> group `GeneralLedger`). Tables that have no namespace tag fall back to the first whitespace-separated word in their name (so `Sales Header` + `Sales Line` -> group `Sales`). Buckets smaller than two tables are dropped so single-table groups don't clutter the diagram.
+## CLI options
 
-Override the source with `--group-by`:
+Run `al2dbml --help` for the full list. The flags group by purpose:
 
-```bash
-al2dbml MyApp.app --group-by namespace   # default
-al2dbml MyApp.app --group-by word        # legacy first-word grouping
-al2dbml MyApp.app --group-by none        # no auto groups (only explicit --group rules apply)
-```
+**Output**
 
-```bash
-# Auto grouping (default)
-al2dbml MyApp.app -o schema.dbml
+- `-o, --output FILE` — write DBML to `FILE` instead of stdout.
+- `--stats` — print object counts (tables, enums, refs, groups) to stderr. With no `-o`, skips the (expensive) render entirely for a fast probe.
 
-# Explicit rules; the value is NAME=PATTERN[,PATTERN...] and -g is repeatable
-al2dbml MyApp.app -g "Documents=Sales*,Purch*" -g "Master=Customer,Vendor,Item"
+**Filtering**
 
-# Disable grouping entirely
-al2dbml MyApp.app --no-groups
+- `--include PATTERN` — keep only tables matching `PATTERN` (fnmatch). Repeatable.
+- `--exclude PATTERN` — drop tables matching `PATTERN`. Applied after `--include`. Repeatable.
 
-# Keep singleton groups too
-al2dbml MyApp.app --min-group-size 1
-```
+**Grouping**
+
+Tables are bucketed into `TableGroup`s by the last segment of their AL namespace (so `Microsoft.Finance.GeneralLedger` → group `GeneralLedger`); un-namespaced tables fall back to their first whitespace-separated word (`Sales Header` + `Sales Line` → `Sales`).
+
+- `-g, --group NAME=PATTERN[,PATTERN...]` — explicit rule. Repeatable.
+- `--group-by namespace|word|none` — change the auto-source (default `namespace`).
+- `--no-groups` — emit no `TableGroup` blocks at all.
+- `--min-group-size N` — drop groups smaller than `N` tables (default 2; use `1` to keep singletons).
+
+**Schemas**
+
+- `--table-schema NAME` — schema for `Table` blocks (default `dbo`, matching BC's SQL Server).
+- `--enum-schema NAME` — schema for `Enum` blocks (default `meta`, since BC enums are AL-language metadata, not SQL objects).
+
+**dbdocs header**
+
+- `--database-type NAME` — value for the DBML `Project { database_type: ... }` line (default `MSSQL`). Pass `""` to omit it. dbdocs.io uses this as the engine label on the rendered schema.
+
+**Extensions**
+
+- `--no-merge-extensions` — emit `TableExtensions` as separate `<Target> (Extension)` tables instead of merging their fields into the base table.
+
+**Rich descriptions**
+
+- `-d, --docs DIR` — overlay aldoc-generated YAML field descriptions and table summaries onto the diagram (see next section).
 
 ## Rich field descriptions (aldoc overlay)
 
-By default, column notes are built from the AL `Caption` property in `SymbolReference.json` — which is usually just the field name itself. Real BC field documentation (the "Specifies the customer number..." sentences you see on [Microsoft Learn](https://learn.microsoft.com/dynamics365/business-central/dev-itpro)) lives in the AL `ToolTip` property and `/// <summary>` XML doc comments, neither of which the compiled `.app` package preserves.
+Default column notes come from the AL `Caption` property — usually just the field name. The actual BC documentation (the "Specifies the customer number..." sentences from [Microsoft Learn](https://learn.microsoft.com/dynamics365/business-central/dev-itpro)) lives in the AL `ToolTip` property and `/// <summary>` XML doc comments, neither of which the compiled `.app` keeps.
 
-To get those rich descriptions into your diagram, run [`aldoc`](https://learn.microsoft.com/dynamics365/business-central/dev-itpro/developer/devenv-al-doc) (Microsoft's official AL documentation generator, bundled with the AL Language VS Code extension) once to produce a YAML reference tree, then point `al2dbml` at it with `-d`/`--docs`:
+Microsoft's [`aldoc`](https://learn.microsoft.com/dynamics365/business-central/dev-itpro/developer/devenv-al-doc) tool (bundled with the AL Language VS Code extension) does keep them. Run it once per release, then point `al2dbml` at the output:
 
 ```bash
-# Step 1: generate docs from your .app (slow, but only once per release)
-aldoc generate MyApp.app -o ./myapp-docs/
-
-# Step 2: render the DBML with descriptions overlaid (fast)
-al2dbml MyApp.app --docs ./myapp-docs/ -o schema.dbml
+aldoc generate MyApp.app -o ./myapp-docs/                       # slow, once per release
+al2dbml MyApp.app --docs ./myapp-docs/ -o schema.dbml            # fast
 ```
 
-The result:
+You get:
 
-- Each table block gets a `Note { ... }` body sourced from the AL `/// <summary>` of the table — e.g. *"Stores document-level information for sales quotes, orders, invoices, credit memos, blanket orders, and return orders."*
-- Each column note leads with the AL `ToolTip` text — e.g. *"Specifies the customer number to whom the goods or services are sold."*
-- Existing condition / `**References**` sections still follow, separated by `<br><br>`
+- Each `Table` block gains a `Note { ... }` body from the AL `/// <summary>` of the table.
+- Each column note leads with the AL `ToolTip` text instead of the bare caption.
+- Existing `**Condition:**` / `**References**` sections still follow.
 
-Coverage is uneven: active-document tables (Sales Header, Customer, Item, etc.) are richly documented in real BC; history and buffer tables often have nothing. Where aldoc has no entry, the original Caption-based note (or no note) is used.
+Coverage is uneven. Active-document tables (Customer, Item, Sales Header) are richly documented; history and buffer tables often have nothing. Missing entries fall back to the Caption-based note.
 
-## TableExtensions
-
-Extensions are merged into their target tables by default. Use `--no-merge-extensions` to emit them as separate `<Target> (Extension)` tables instead.
-
-## Public Python API
+## Python API
 
 ```python
 from al2dbml import Diagram, generate, GroupingConfig
 
-# One-shot helper
-dbml = generate("MyApp.app", output_path="schema.dbml")
+# One-shot
+dbml = generate("MyApp.app", output_path="schema.dbml", database_type="MSSQL")
 
-# Or step-by-step for custom grouping
+# Step-by-step with custom config
 diagram = Diagram.from_app(
     "MyApp.app",
     grouping=GroupingConfig(rules={"Documents": ["Sales*", "Purch*"]}),
+    includes=["Sales*", "Customer"],
+    docs=...,                            # optional AldocDocs from al2dbml.aldoc.load_docs
 )
-print(diagram.dbml())
+print(diagram.dbml())                    # build + render
+print(diagram.stats())                   # {'tables': N, 'columns': N, ...}
+print(diagram.context.tables.keys())     # inspect the live BuildContext
 ```
+
+`Diagram` is a single-shot dataclass: `build()` is cached, so mutating its fields after the first call has no effect. Construct a new instance to rebuild with different settings.
+
+A second console script, `al2dbml-validate FILE.dbml`, parse-checks a DBML file via pydbml. Useful as a smoke test in CI, though it doesn't match dbdiagram.io's parser exactly — see Limitations.
 
 ## Limitations
 
-- FlowFields are treated as regular fields — the underlying CalcFormula is not interpreted.
-- Obsolete fields are emitted alongside active ones; no filtering by `ObsoleteState`.
-- Multi-field primary keys are represented as multiple `[pk]` flags rather than a composite index, matching DBML's single-PK convention.
-- Multi-column secondary keys are not yet emitted as DBML indexes; only single-column secondary keys are surfaced (as `[unique]` on the column).
-- Cross-package references (table relations that point to a table outside the current `.app`) are preserved as notes on the source column, since the target table is not present in the diagram.
-- `IF (...) ... ELSE IF (...) ... ELSE ...` conditional `TableRelation` expressions are parsed into one DBML `Ref` per resolved branch, with each branch's condition recorded in the source column's note. Branches whose target table is missing from the current `.app` degrade to notes only.
-- Render time scales quadratically with the table count inside the underlying `pydbml` library. Small/medium packages (up to a few hundred tables) finish in under a second. Microsoft's full Base Application (~1,500 tables) currently takes several minutes to render, even though parsing itself is fast. A custom DBML emitter is on the roadmap to remove this cliff.
+- **Render time scales quadratically with table count** inside pydbml. Up to a few hundred tables: sub-second. Microsoft's full Base Application (~1,500 tables) currently takes several minutes. A custom emitter is on the roadmap.
+- **FlowFields** are treated as regular fields; the underlying `CalcFormula` is not interpreted.
+- **Obsolete fields** are emitted alongside active ones; no filtering by `ObsoleteState`.
+- **Multi-field primary keys** become multiple `[pk]` flags (DBML's single-PK convention) rather than a composite index.
+- **Multi-column secondary keys** are not yet emitted as DBML `indexes` blocks; only single-column secondary keys surface (as `[unique]`).
+- **Cross-package references** (relations pointing outside the current `.app`) degrade to `**References** \`Target\` (cross-package)` notes on the source column, since the target table is absent from the diagram.
+- **Conditional `IF`/`ELSE` `TableRelation`s** produce one `Ref` per resolved branch, with the branch's condition recorded as a `// when (...)` comment on the Ref. Branches whose target is missing degrade to a column note.
+- **`al2dbml-validate` uses pydbml's parser**, which is not byte-identical to dbdiagram.io's parser. For an authoritative check matching dbdiagram exactly: `dbml2sql FILE --postgres` from [`@dbml/cli`](https://www.npmjs.com/package/@dbml/cli).
 
 ## Development
 
@@ -154,5 +163,7 @@ print(diagram.dbml())
 python -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 .venv/bin/pytest -q
-.venv/bin/ruff check .
+.venv/bin/ruff check . && .venv/bin/ruff format --check .
 ```
+
+Tags matching `v*` trigger a PyPI Trusted Publisher upload via `.github/workflows/publish.yml`.
