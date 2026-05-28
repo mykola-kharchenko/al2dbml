@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from al2dbml._build.context import _PendingRef
 from al2dbml.diagram import Diagram
 from al2dbml.grouping import GroupingConfig
@@ -295,6 +297,28 @@ def test_pending_ref_dataclass_is_internal() -> None:
     # Sanity: the helper dataclass is exposed for tests only.
     ref = _PendingRef("A", "a", "B", "b", None)
     assert ref.target_table == "B"
+
+
+def test_context_property_is_lazy_and_cached() -> None:
+    # First access lazily creates the BuildContext; second access returns
+    # the same instance so all phases of the pipeline see the same state.
+    diagram = Diagram(symbols=sample_symbols())
+    ctx1 = diagram.context
+    ctx2 = diagram.context
+    assert ctx1 is ctx2
+    # And build() must reuse the same context so context.tables matches up.
+    diagram.build()
+    assert diagram.context is ctx1
+    assert "Customer" in diagram.context.tables
+
+
+def test_context_property_has_no_setter() -> None:
+    # diagram.context is a read-only inspection surface; reassigning it
+    # should raise AttributeError so callers can't accidentally swap the
+    # build state out from under the Diagram.
+    diagram = Diagram(symbols=sample_symbols())
+    with pytest.raises(AttributeError):
+        diagram.context = None  # type: ignore[misc]
 
 
 def test_dbml_is_idempotent() -> None:

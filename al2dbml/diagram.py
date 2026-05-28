@@ -76,7 +76,7 @@ class Diagram:
         """Run the full pipeline and return the populated :class:`pydbml.Database`."""
         if self._built:
             return self.db
-        ctx = self._context()
+        ctx = self.context
         EnumBuilder.build(ctx)
         TableBuilder.build(ctx)
         if self.merge_extensions:
@@ -101,7 +101,7 @@ class Diagram:
         codeunits produces ``{'tables': 0, ...}`` and explains an empty diagram.
         """
         self.build()
-        ctx = self._context()
+        ctx = self.context
         return {
             "tables": len(ctx.tables),
             "columns": len(ctx.columns),
@@ -111,40 +111,22 @@ class Diagram:
         }
 
     # ------------------------------------------------------------------ #
-    # Backwards-compatibility accessors for tests / external callers     #
-    # that reach into the old private dicts.                             #
+    # Public inspection surface                                          #
     # ------------------------------------------------------------------ #
 
     @property
-    def _enums(self) -> dict[str, Enum]:
-        return self._context().enums
+    def context(self) -> BuildContext:
+        """Read-only view of the live :class:`BuildContext` for this Diagram.
 
-    @property
-    def _tables(self) -> dict[str, Table]:
-        return self._context().tables
+        Lazily created on first access; subsequent build phases and external
+        callers all share the same instance. The property exposes the
+        build state (tables, columns, enums, pending refs, table namespaces)
+        for inspection without leaking the dataclass implementation detail
+        of ``_ctx`` directly.
 
-    @property
-    def _columns(self) -> dict[tuple[str, str], Column]:
-        return self._context().columns
-
-    @property
-    def _pending_refs(self) -> list[_PendingRef]:
-        return self._context().pending_refs
-
-    @property
-    def _table_namespaces(self) -> dict[str, str]:
-        return self._context().table_namespaces
-
-    # ------------------------------------------------------------------ #
-    # Internals                                                          #
-    # ------------------------------------------------------------------ #
-
-    def _context(self) -> BuildContext:
-        """Return the lazily-created :class:`BuildContext` for this generator.
-
-        Created on first access; subsequent build phases share the same
-        instance so ``stats()`` and the backwards-compat property accessors
-        all read the same state.
+        The property has no setter, so ``diagram.context = ...`` raises
+        :class:`AttributeError`. To rebuild against different inputs,
+        construct a new :class:`Diagram` instance.
         """
         if self._ctx is None:
             self._ctx = BuildContext(
@@ -161,6 +143,30 @@ class Diagram:
                 db=self.db,
             )
         return self._ctx
+
+    # ------------------------------------------------------------------ #
+    # Deprecated accessors (removed in 0.7.0): forward to .context.X     #
+    # ------------------------------------------------------------------ #
+
+    @property
+    def _enums(self) -> dict[str, Enum]:
+        return self.context.enums
+
+    @property
+    def _tables(self) -> dict[str, Table]:
+        return self.context.tables
+
+    @property
+    def _columns(self) -> dict[tuple[str, str], Column]:
+        return self.context.columns
+
+    @property
+    def _pending_refs(self) -> list[_PendingRef]:
+        return self.context.pending_refs
+
+    @property
+    def _table_namespaces(self) -> dict[str, str]:
+        return self.context.table_namespaces
 
     def _header_comment(self) -> str:
         """Return a short provenance preamble identifying the tool + source package."""
