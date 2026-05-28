@@ -59,12 +59,6 @@ from .grouping import GroupingConfig, GroupSource, parse_rule_strings
     ),
 )
 @click.option(
-    "--no-auto-groups",
-    is_flag=True,
-    default=False,
-    help="Deprecated alias for --group-by none.",
-)
-@click.option(
     "--min-group-size",
     type=click.IntRange(min=1),
     default=2,
@@ -137,7 +131,6 @@ def main(
     groups: tuple[str, ...],
     no_groups: bool,
     group_by: str,
-    no_auto_groups: bool,
     min_group_size: int,
     table_schema: str,
     enum_schema: str,
@@ -152,7 +145,7 @@ def main(
     except ValueError as exc:
         raise click.BadParameter(str(exc), param_hint="-g/--group") from exc
 
-    source = cast(GroupSource, "none" if no_auto_groups else group_by.lower())
+    source = cast(GroupSource, group_by.lower())
     grouping = GroupingConfig(
         enabled=not no_groups,
         rules=rules,
