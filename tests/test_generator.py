@@ -81,6 +81,31 @@ def test_cross_package_reference_does_not_crash_and_is_noted() -> None:
     assert '**References** `Vendor."No."` (cross-package)' in dbml
 
 
+def test_if_else_emits_one_ref_per_branch_with_if_condition_comment() -> None:
+    # Each conditional branch produces its own Ref block, and the IF condition
+    # is carried as a pydbml '//' comment so the diagram explains why each
+    # arrow exists. WHERE clauses (per-branch filters) attach to the same line.
+    dbml = _build()
+    # Item branch — no per-branch WHERE
+    assert "// when (Type=CONST(Item))" in dbml
+    assert '"dbo"."Sales Line"."Source No." > "dbo"."Item"."No."' in dbml
+    # Resource branch — also no per-branch WHERE
+    assert "// when (Type=CONST(Resource))" in dbml
+    assert '"dbo"."Sales Line"."Source No." > "dbo"."Resource"."No."' in dbml
+
+
+def test_non_conditional_ref_has_no_comment() -> None:
+    # Sales Header.Sell-to Customer No. -> Customer is a plain TableRelation
+    # (no IF, just a WHERE). The Ref's comment carries only the WHERE.
+    dbml = _build()
+    # Sample fixture has WHERE("Blocked"=CONST(" ")) on Sell-to Customer No.
+    assert 'where ("Blocked"=CONST(" "))' in dbml
+    # And a plain Document No. -> Sales Header.No. ref has NO WHERE and NO IF,
+    # so no '//' comment line precedes its Ref block.
+    document_no_ref = 'Ref {\n    "dbo"."Sales Line"."Document No." > "dbo"."Sales Header"."No."\n}'
+    assert document_no_ref in dbml
+
+
 def test_if_else_branches_render_with_html_line_breaks() -> None:
     dbml = _build()
     # IF/ELSE branches each go on their own visual line via <br>; dbdiagram

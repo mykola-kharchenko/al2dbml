@@ -27,7 +27,8 @@ class _PendingRef:
     source_field: str
     target_table: str
     target_field: str | None
-    condition: str | None
+    condition: str | None  # the AL WHERE(...) filter, when present
+    if_condition: str | None = None  # the IF (...) clause for conditional refs
 
 
 @dataclass
@@ -304,6 +305,7 @@ class Generator:
                                 target_table=br_table,
                                 target_field=br_field,
                                 condition=br_where,
+                                if_condition=if_cond,
                             )
                         )
                     label = (
@@ -436,14 +438,27 @@ class Generator:
             if key in seen:
                 continue
             seen.add(key)
-            ref = Reference(type=">", col1=source_col, col2=target_col)
+
+            # Carry the IF condition and any WHERE filter onto the Ref itself as
+            # a pydbml comment, which renders as a '//' line above the Ref { }
+            # block in DBML. The diagram thus shows *why* each arrow exists when
+            # a column has multiple conditional branches resolving to different
+            # targets. Non-conditional refs leave comment as None.
+            comment_parts: list[str] = []
+            if ref.if_condition:
+                comment_parts.append(f"when {ref.if_condition}")
+            if ref.condition:
+                comment_parts.append(f"where {ref.condition}")
+            comment = "; ".join(comment_parts) if comment_parts else None
+
+            ref_obj = Reference(type=">", col1=source_col, col2=target_col, comment=comment)
             # pydbml.Database.add_reference performs an O(n) duplicate check via
             # Reference.__eq__ that recurses through both columns and both tables.
             # On Base Application (~8k refs) that ballooned build time to several
             # minutes. We already dedupe by (id(src), id(tgt)) above, so the
             # check is redundant; inline the cheap parts of add_reference here.
-            ref.database = self.db
-            self.db.refs.append(ref)
+            ref_obj.database = self.db
+            self.db.refs.append(ref_obj)
 
     def _apply_table_filters(self) -> None:
         """Drop tables that don't match the include/exclude glob patterns.
