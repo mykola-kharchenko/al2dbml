@@ -4,6 +4,28 @@ All notable changes to `al2dbml` land here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - 2026-05-28
+
+Code-shape polish + the last lingering deprecation cleanup. No new features; this is a "clean and pretty" release.
+
+### Removed (breaking)
+
+- **`--no-auto-groups` CLI flag** — deprecated alias since 0.3.0. Use `--group-by none` instead. The Python API (`GroupingConfig(source="none")`) is unchanged.
+
+### Changed
+
+- `__version__` now lives in a dedicated `al2dbml/__meta__.py` module. The public import path `from al2dbml import __version__` is unchanged.
+
+### Internal
+
+- `al2dbml/diagram.py` imports `__version__` at module top instead of via a function-local import in `_header_comment()` (the circular-import risk is gone now that `__meta__.py` is dependency-free).
+- `_make_table` no longer needs the if/else around `Table(note=...)` — `pydbml.Table(note=None)` is equivalent to omitting the kwarg.
+- `__main__.py` replaces a `# type: ignore[arg-type]` with a proper `typing.cast(GroupSource, ...)` for narrowing the `--group-by` string to its `Literal` type.
+- `aldoc.py` gains a module docstring and uses a named `_UTF8_BOM = chr(0xFEFF)` constant instead of a literal BOM character that rendered as an invisible empty string in source.
+- `Diagram.context` docstring now explicitly notes that the collections are empty until `build()` runs.
+- Stale "Generator" references in `BuildConfig`'s docstring (left over from the 0.6.0 rename) refreshed to "Diagram".
+- `pytest` config suppresses pydbml's pyparsing `DeprecationWarning` noise; test runs go from 33 warnings to 0, so any warning we own becomes visible.
+
 ## [0.7.0] - 2026-05-28
 
 The clean break: every backwards-compatibility shim retained during the 0.6.0 rename is now gone, plus the small review nits identified in 0.6.1.
@@ -217,6 +239,7 @@ Initial release.
 - `al2dbml` console script with `-o`, `--merge-extensions/--no-merge-extensions`, `-g`, `--no-groups`, `--no-auto-groups`, `--min-group-size`, `--version`, `-h/--help`.
 - Public Python API: `Generator`, `generate`, `GroupingConfig`, `__version__`.
 
+[0.8.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.8.0
 [0.7.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.7.0
 [0.6.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.6.1
 [0.6.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.6.0
