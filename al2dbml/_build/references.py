@@ -1,4 +1,4 @@
-"""Reference resolution phase.
+r"""Reference resolution phase.
 
 Converts the ``_PendingRef`` entries collected by
 :class:`al2dbml._build.tables.TableBuilder` and

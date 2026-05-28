@@ -4,6 +4,12 @@ All notable changes to `al2dbml` land here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.6.1] - 2026-05-28
+
+### Fixed
+
+- `SyntaxWarning: invalid escape sequence '\`'` emitted by Python 3.13 on import of `al2dbml._build.references`. The module docstring used `\`X\`` (intended as escaped RST backtick literals) which Python 3.13 now flags. Marked the docstring as a raw string (`r"""..."""`) so the backslashes pass through untouched.
+
 ## [0.6.0] - 2026-05-28
 
 ### Changed
@@ -177,6 +183,7 @@ Initial release.
 - `al2dbml` console script with `-o`, `--merge-extensions/--no-merge-extensions`, `-g`, `--no-groups`, `--no-auto-groups`, `--min-group-size`, `--version`, `-h/--help`.
 - Public Python API: `Generator`, `generate`, `GroupingConfig`, `__version__`.
 
+[0.6.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.6.1
 [0.6.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.6.0
 [0.5.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.5.1
 [0.5.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.5.0
