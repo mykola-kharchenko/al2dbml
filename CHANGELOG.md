@@ -4,6 +4,40 @@ All notable changes to `al2dbml` land here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] - 2026-05-28
+
+The clean break: every backwards-compatibility shim retained during the 0.6.0 rename is now gone, plus the small review nits identified in 0.6.1.
+
+### Removed (breaking)
+
+Every removal has a 1:1 migration target. If you only used the public API (`al2dbml.Diagram`), nothing changes.
+
+| Removed | Use instead |
+| --- | --- |
+| `from al2dbml import Generator` | `from al2dbml import Diagram` |
+| `from al2dbml.generator import ...` | `from al2dbml.diagram import ...` (or `from al2dbml import ...`) |
+| `diagram._enums` | `diagram.context.enums` |
+| `diagram._tables` | `diagram.context.tables` |
+| `diagram._columns` | `diagram.context.columns` |
+| `diagram._pending_refs` | `diagram.context.pending_refs` |
+| `diagram._table_namespaces` | `diagram.context.table_namespaces` |
+| `Diagram._properties` | `al2dbml.properties.normalize` |
+| `Diagram._parse_relation_string` | `al2dbml.relations.parse_relation_string` |
+| `Diagram._parse_conditional_relation` | `al2dbml.relations.parse_conditional_relation` |
+| `Diagram._parse_qualified` | `al2dbml.relations.parse_qualified` |
+| `Diagram._find_matching_paren` | `al2dbml.relations.find_matching_paren` |
+
+### Added
+
+- `Diagram.context` — read-only `@property` returning the live `BuildContext` for inspection (tables, columns, enums, pending refs, table namespaces). Lazily created on first access, cached for subsequent reads; assignment raises `AttributeError`.
+- `generate(app_path, output_path=None, **kwargs)` now forwards arbitrary kwargs to `Diagram.from_app`, so the one-shot helper has parity with the class-based path (`generate("MyApp.app", docs=..., table_schema=..., includes=...)`).
+- Direct unit test coverage for `al2dbml.relations` (~25 tests) and `al2dbml.properties` (~10 tests). They were previously tested only indirectly through end-to-end `Diagram` tests.
+
+### Internal
+
+- `build_column` moved from a module-level function to `TableBuilder.build_column` staticmethod for visual consistency with `TableBuilder._make_table`. Pure rename.
+- `__main__.py` local variable renamed from `generator` to `diagram`. Cosmetic.
+
 ## [0.6.1] - 2026-05-28
 
 ### Fixed
@@ -183,6 +217,7 @@ Initial release.
 - `al2dbml` console script with `-o`, `--merge-extensions/--no-merge-extensions`, `-g`, `--no-groups`, `--no-auto-groups`, `--min-group-size`, `--version`, `-h/--help`.
 - Public Python API: `Generator`, `generate`, `GroupingConfig`, `__version__`.
 
+[0.7.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.7.0
 [0.6.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.6.1
 [0.6.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.6.0
 [0.5.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.5.1

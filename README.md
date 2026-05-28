@@ -140,8 +140,6 @@ diagram = Diagram.from_app(
 print(diagram.dbml())
 ```
 
-> The class was named `Generator` through 0.5.x; `Generator` remains as a deprecated alias in 0.6.x and will be removed in 0.7.0.
-
 ## Limitations
 
 - FlowFields are treated as regular fields — the underlying CalcFormula is not interpreted.
