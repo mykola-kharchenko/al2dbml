@@ -16,3 +16,6 @@ htmlcov/
 
 # Never commit real Business Central packages
 *.app
+
+# Per-user Claude Code project context; travels with the developer, not the repo
+.claude/
