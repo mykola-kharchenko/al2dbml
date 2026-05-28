@@ -45,6 +45,17 @@ class Diagram:
     5. :class:`ReferenceResolver` — resolve pending refs into pydbml
        ``Reference`` objects with graceful cross-package degradation
     6. :class:`GroupBuilder` — emit ``TableGroup`` blocks
+
+    **Lifecycle.** A ``Diagram`` instance is single-shot: the
+    :class:`BuildContext` is created lazily on first access of
+    :attr:`context` (or first call to :meth:`build`) and cached for the
+    lifetime of the instance. Mutating the dataclass fields
+    (``merge_extensions``, ``includes``, ``table_schema``, ...) *after*
+    that point has no effect — the cached config is what subsequent
+    phases read. To run the pipeline with different settings, construct a
+    new ``Diagram``. (We don't ``frozen=True`` the class so callers can
+    still pass a pre-existing ``db=`` and inspect it; see the
+    ``db`` field note below.)
     """
 
     symbols: dict[str, Any]
@@ -55,6 +66,11 @@ class Diagram:
     includes: list[str] = field(default_factory=list)
     excludes: list[str] = field(default_factory=list)
     docs: AldocDocs = field(default_factory=AldocDocs)
+    # Passing an external Database in (``db=existing``) makes the build
+    # mutate it in place — every Table/Enum/Reference the pipeline produces
+    # is added to that instance. The default factory gives each Diagram its
+    # own fresh Database; pass one explicitly only when you want al2dbml to
+    # extend an existing pydbml model alongside your own additions.
     db: Database = field(default_factory=Database)
 
     _ctx: BuildContext | None = field(init=False, default=None)
