@@ -20,6 +20,42 @@ from pydbml.classes import Column, Note, Reference
 from .context import BuildContext
 
 
+def _format_filter_clause(raw: str) -> str:
+    """Format an AL filter expression for rendering as a Ref comment.
+
+    Inputs come from :func:`al2dbml.relations.parse_relation_string` already
+    whitespace-normalised, so they're a single-line string like
+    ``("a"=CONST(X), "b"=FIELD("b"))`` — but on real Base Application fields
+    that comma-separated list can be very long. Splitting it onto multiple
+    indented lines joined with ``AND`` keeps the rendered ``// where ...``
+    block readable without inventing meaning the source didn't carry.
+
+    Single-condition clauses render unchanged (kept parens) so the simple
+    case stays inline. Multi-condition clauses lose the outer parens — the
+    indent + ``AND`` makes the grouping obvious without them.
+    """
+    text = raw.strip()
+    if not (text.startswith("(") and text.endswith(")")):
+        return text
+    inner = text[1:-1].strip()
+    parts: list[str] = []
+    depth = 0
+    last = 0
+    for i, ch in enumerate(inner):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append(inner[last:i].strip())
+            last = i + 1
+    parts.append(inner[last:].strip())
+    parts = [p for p in parts if p]
+    if len(parts) <= 1:
+        return text
+    return "\n  " + " AND\n  ".join(parts)
+
+
 class ReferenceResolver:
     """Resolves ``PendingRef`` entries into ``Reference`` objects.
 
@@ -82,15 +118,22 @@ class ReferenceResolver:
             seen.add(key)
 
             # Carry the IF condition and any WHERE filter onto the Ref itself
-            # as a pydbml comment, which renders as a '//' line above the
-            # Ref { } block in DBML. The diagram thus shows *why* each arrow
-            # exists when a column has multiple conditional branches.
+            # as a pydbml comment, which renders as '//' lines above the
+            # Ref { } block in DBML. Multi-condition WHEREs from real Base
+            # Application fields are reformatted by ``_format_filter_clause``
+            # into an indented, AND-joined block instead of inheriting the
+            # AL source's multi-line continuation indent verbatim. ``when``
+            # and ``where`` go on separate lines when both are present.
             comment_parts: list[str] = []
             if ref.if_condition:
-                comment_parts.append(f"when {ref.if_condition}")
+                clause = _format_filter_clause(ref.if_condition)
+                sep = "" if clause.startswith("\n") else " "
+                comment_parts.append(f"when{sep}{clause}")
             if ref.condition:
-                comment_parts.append(f"where {ref.condition}")
-            comment = "; ".join(comment_parts) if comment_parts else None
+                clause = _format_filter_clause(ref.condition)
+                sep = "" if clause.startswith("\n") else " "
+                comment_parts.append(f"where{sep}{clause}")
+            comment = "\n".join(comment_parts) if comment_parts else None
 
             ref_obj = Reference(type=">", col1=source_col, col2=target_col, comment=comment)
             ref_obj.database = ctx.db

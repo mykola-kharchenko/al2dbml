@@ -26,6 +26,21 @@ _LEADING_IF_RE = re.compile(r"^\s*IF\b", re.IGNORECASE)
 _IF_HEAD_RE = re.compile(r"\s*(?:ELSE\s+)?IF\s*\(", re.IGNORECASE)
 _ELSE_HEAD_RE = re.compile(r"\s*ELSE\b", re.IGNORECASE)
 _NEXT_ELSE_RE = re.compile(r"\bELSE\b", re.IGNORECASE)
+_WHITESPACE_RUN = re.compile(r"\s+")
+
+
+def _normalize_clause(text: str) -> str:
+    """Collapse internal whitespace in a captured parenthesised clause.
+
+    AL source sometimes wraps long ``IF`` or ``WHERE`` clauses across many
+    lines with continuation indent; capturing the slice verbatim leaks that
+    formatting into Ref comments and column notes. Collapsing every
+    whitespace run to a single space gives downstream consumers a clean
+    single-line string to work with — the Ref-comment renderer can then
+    reformat it into a multi-line block deliberately, instead of inheriting
+    the source layout.
+    """
+    return _WHITESPACE_RUN.sub(" ", text).strip()
 
 
 def find_matching_paren(text: str, open_index: int) -> int:
@@ -103,7 +118,7 @@ def parse_relation_string(
         end_index = find_matching_paren(text, paren_start)
         if end_index == -1:
             end_index = len(text) - 1
-        condition = text[paren_start : end_index + 1]
+        condition = _normalize_clause(text[paren_start : end_index + 1])
         text = text[: match.start()].strip()
 
     table, field_name = parse_qualified(text)
@@ -136,7 +151,7 @@ def parse_conditional_relation(
             close_paren = find_matching_paren(text, open_paren)
             if close_paren == -1:
                 return branches or None
-            if_cond = text[open_paren : close_paren + 1]
+            if_cond = _normalize_clause(text[open_paren : close_paren + 1])
             pos = close_paren + 1
             next_else = _NEXT_ELSE_RE.search(text, pos)
             if next_else:

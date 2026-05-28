@@ -166,3 +166,39 @@ def test_parse_conditional_relation_returns_none_for_non_string_input() -> None:
     assert parse_conditional_relation(None) is None
     assert parse_conditional_relation({"Table": "X"}) is None
     assert parse_conditional_relation(123) is None
+
+
+# ---------------------------------------------------------------------------
+# Whitespace normalisation on captured clauses
+# ---------------------------------------------------------------------------
+
+
+def test_parse_relation_string_normalises_multiline_where_clause() -> None:
+    # AL sometimes wraps a long TableRelation across multiple lines with
+    # continuation indent; capturing the slice verbatim used to leak the
+    # source layout into Ref comments. The parser now collapses every
+    # whitespace run to a single space so downstream consumers get a
+    # single-line clause they can reformat deliberately.
+    raw = (
+        'Customer."No." WHERE("Contract Type" = const(Contract),\n'
+        '                    "Customer No." = field("Customer No."),\n'
+        '                    "Ship-to Code" = field("Ship-to Code"))'
+    )
+    table, field, condition = parse_relation_string(raw)
+    assert table == "Customer"
+    assert field == "No."
+    assert condition is not None
+    assert "\n" not in condition
+    assert condition == (
+        '("Contract Type" = const(Contract), '
+        '"Customer No." = field("Customer No."), '
+        '"Ship-to Code" = field("Ship-to Code"))'
+    )
+
+
+def test_parse_conditional_relation_normalises_if_clause_whitespace() -> None:
+    raw = 'IF ("Document Type"\n      = CONST(Order)) Tbl."F"'
+    branches = parse_conditional_relation(raw)
+    assert branches is not None
+    if_cond, _table, _field, _where = branches[0]
+    assert if_cond == '("Document Type" = CONST(Order))'
