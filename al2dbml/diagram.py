@@ -162,9 +162,23 @@ class Diagram:
         return first + second + ("\n" if first or second else "")
 
 
-def generate(app_path: str | Path, output_path: str | Path | None = None) -> str:
-    """Convenience wrapper: load ``app_path``, render DBML, optionally write to ``output_path``."""
-    diagram = Diagram.from_app(app_path)
+def generate(
+    app_path: str | Path,
+    output_path: str | Path | None = None,
+    **kwargs: Any,
+) -> str:
+    """Convenience wrapper: load ``app_path``, render DBML, optionally write to ``output_path``.
+
+    Any additional keyword arguments are forwarded to :meth:`Diagram.from_app`,
+    so the full configuration surface (``docs``, ``table_schema``, ``includes``,
+    ``grouping``, etc.) is reachable from the one-shot helper:
+
+    .. code-block:: python
+
+        generate("MyApp.app", output_path="schema.dbml",
+                 docs=load_docs("./docs"), includes=["Sales*"])
+    """
+    diagram = Diagram.from_app(app_path, **kwargs)
     rendered = diagram.dbml()
     if output_path is not None:
         Path(output_path).write_text(rendered, encoding="utf-8")

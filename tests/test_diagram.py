@@ -300,6 +300,27 @@ def test_pending_ref_dataclass_is_internal() -> None:
     assert ref.target_table == "B"
 
 
+def test_generate_forwards_kwargs_to_diagram_from_app(tmp_path) -> None:
+    # The module-level generate() should accept the same kwargs as
+    # Diagram.from_app(). Smoke-test by passing table_schema and asserting
+    # it lands on the rendered output.
+    import io
+    import json
+    import zipfile
+
+    from al2dbml import generate
+
+    payload = json.dumps({"Tables": [{"Name": "T", "Fields": [], "Keys": [{"FieldNames": []}]}]})
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("SymbolReference.json", payload.encode())
+    app = tmp_path / "tiny.app"
+    app.write_bytes(buf.getvalue())
+
+    rendered = generate(app, table_schema="custom")
+    assert 'Table "custom"."T"' in rendered
+
+
 def test_context_property_is_lazy_and_cached() -> None:
     # First access lazily creates the BuildContext; second access returns
     # the same instance so all phases of the pipeline see the same state.

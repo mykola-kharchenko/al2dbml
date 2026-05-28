@@ -177,7 +177,7 @@ def main(
     needs_render = output is not None or not show_stats
 
     try:
-        generator = Diagram.from_app(
+        diagram = Diagram.from_app(
             app,
             merge_extensions=merge_extensions,
             grouping=grouping,
@@ -188,16 +188,16 @@ def main(
             docs=docs,
         )
         if needs_render:
-            rendered: str | None = generator.dbml()
+            rendered: str | None = diagram.dbml()
         else:
-            generator.build()
+            diagram.build()
             rendered = None
     except FileNotFoundError as exc:
         raise click.ClickException(str(exc)) from exc
     except KeyError as exc:
         raise click.ClickException(str(exc)) from exc
 
-    counts = generator.stats()
+    counts = diagram.stats()
     if show_stats:
         click.echo(
             ", ".join(f"{name}={value}" for name, value in counts.items()),
