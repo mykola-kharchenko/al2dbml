@@ -82,11 +82,11 @@ def test_help_mentions_pydbml(tmp_path: Path) -> None:
 def test_round_trip_al2dbml_output_validates(tmp_path: Path) -> None:
     # The DBML al2dbml emits from the sample fixture must itself be parseable.
     # This is the cheapest possible regression net for emission bugs.
-    from al2dbml.generator import Generator
+    from al2dbml import Diagram
 
     from .fixtures.sample_symbols import sample_symbols
 
-    rendered = Generator(symbols=sample_symbols()).dbml()
+    rendered = Diagram(symbols=sample_symbols()).dbml()
     file = _write(tmp_path, "generated.dbml", rendered)
     runner = CliRunner()
     result = runner.invoke(main, [str(file)])

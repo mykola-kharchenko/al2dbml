@@ -4,9 +4,6 @@ This module owns the :class:`Diagram` class (the public entry point) plus the
 pipeline coordination. The per-phase work lives in :mod:`al2dbml._build`;
 each phase is a focused module operating on a shared
 :class:`al2dbml._build.context.BuildContext`.
-
-The old ``Generator`` name is kept as a deprecated alias for one release
-(removed in 0.7.0).
 """
 
 from __future__ import annotations
@@ -16,10 +13,8 @@ from pathlib import Path
 from typing import Any
 
 from pydbml import Database
-from pydbml.classes import Column, Enum, Table
 
-from . import properties, relations
-from ._build.context import BuildConfig, BuildContext, _PendingRef
+from ._build.context import BuildConfig, BuildContext
 from ._build.enums import EnumBuilder
 from ._build.extensions import ExtensionBuilder
 from ._build.filters import TableFilter
@@ -30,10 +25,7 @@ from .aldoc import AldocDocs
 from .grouping import GroupingConfig
 from .symbols import load_symbols
 
-# Re-exports kept on the module for the (small) set of external consumers
-# reaching for them directly; the in-pipeline call sites use the package
-# names (BuildContext, etc.) above.
-__all__ = ["Diagram", "Generator", "generate"]
+__all__ = ["Diagram", "generate"]
 
 
 @dataclass
@@ -144,30 +136,6 @@ class Diagram:
             )
         return self._ctx
 
-    # ------------------------------------------------------------------ #
-    # Deprecated accessors (removed in 0.7.0): forward to .context.X     #
-    # ------------------------------------------------------------------ #
-
-    @property
-    def _enums(self) -> dict[str, Enum]:
-        return self.context.enums
-
-    @property
-    def _tables(self) -> dict[str, Table]:
-        return self.context.tables
-
-    @property
-    def _columns(self) -> dict[tuple[str, str], Column]:
-        return self.context.columns
-
-    @property
-    def _pending_refs(self) -> list[_PendingRef]:
-        return self.context.pending_refs
-
-    @property
-    def _table_namespaces(self) -> dict[str, str]:
-        return self.context.table_namespaces
-
     def _header_comment(self) -> str:
         """Return a short provenance preamble identifying the tool + source package."""
         from . import __version__
@@ -193,16 +161,6 @@ class Diagram:
         second = f"// AppId: {app_id}\n" if app_id else ""
         return first + second + ("\n" if first or second else "")
 
-    # ------------------------------------------------------------------ #
-    # Shims for legacy access patterns                                   #
-    # ------------------------------------------------------------------ #
-
-    _properties = staticmethod(properties.normalize)
-    _parse_relation_string = staticmethod(relations.parse_relation_string)
-    _parse_conditional_relation = staticmethod(relations.parse_conditional_relation)
-    _parse_qualified = staticmethod(relations.parse_qualified)
-    _find_matching_paren = staticmethod(relations.find_matching_paren)
-
 
 def generate(app_path: str | Path, output_path: str | Path | None = None) -> str:
     """Convenience wrapper: load ``app_path``, render DBML, optionally write to ``output_path``."""
@@ -211,9 +169,3 @@ def generate(app_path: str | Path, output_path: str | Path | None = None) -> str
     if output_path is not None:
         Path(output_path).write_text(rendered, encoding="utf-8")
     return rendered
-
-
-# Deprecated alias: kept for one release (removed in 0.7.0). Existing code
-# that does `from al2dbml import Generator` continues to work; new code
-# should use `Diagram` directly.
-Generator = Diagram

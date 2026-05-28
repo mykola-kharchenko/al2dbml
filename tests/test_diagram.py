@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from al2dbml import relations
 from al2dbml._build.context import _PendingRef
 from al2dbml.diagram import Diagram
 from al2dbml.grouping import GroupingConfig
@@ -260,7 +261,7 @@ def test_from_app_classmethod_has_docstring() -> None:
 
 
 def test_parse_relation_string_dict_form() -> None:
-    table, field, cond = Diagram._parse_relation_string(
+    table, field, cond = relations.parse_relation_string(
         {"Table": "Customer", "Field": "No.", "Condition": '("Blocked"=CONST(""))'}
     )
     assert (table, field, cond) == (
@@ -271,7 +272,7 @@ def test_parse_relation_string_dict_form() -> None:
 
 
 def test_parse_relation_string_quoted_qualified_with_where() -> None:
-    table, field, cond = Diagram._parse_relation_string(
+    table, field, cond = relations.parse_relation_string(
         '"Customer"."No." WHERE("Blocked"=CONST(" "))'
     )
     assert table == "Customer"
@@ -280,12 +281,12 @@ def test_parse_relation_string_quoted_qualified_with_where() -> None:
 
 
 def test_parse_relation_string_bare_table_only() -> None:
-    table, field, cond = Diagram._parse_relation_string("Customer")
+    table, field, cond = relations.parse_relation_string("Customer")
     assert (table, field, cond) == ("Customer", None, None)
 
 
 def test_parse_relation_string_nested_parens_in_condition() -> None:
-    table, field, cond = Diagram._parse_relation_string(
+    table, field, cond = relations.parse_relation_string(
         'Item."No." WHERE(Type=CONST(Item),Blocked=CONST(FALSE))'
     )
     assert table == "Item"
@@ -437,7 +438,7 @@ def test_if_else_branches_carry_conditions_in_note() -> None:
 
 
 def test_if_else_default_branch_no_condition() -> None:
-    branches = Diagram._parse_conditional_relation('IF (Cond1) "T1"."f1" ELSE "T2"."f2"')
+    branches = relations.parse_conditional_relation('IF (Cond1) "T1"."f1" ELSE "T2"."f2"')
     assert branches is not None
     assert len(branches) == 2
     assert branches[0][0] == "(Cond1)"
@@ -447,7 +448,7 @@ def test_if_else_default_branch_no_condition() -> None:
 
 
 def test_if_else_with_per_branch_where() -> None:
-    branches = Diagram._parse_conditional_relation('IF (T=CONST(A)) Tbl."F" WHERE("X"=CONST(""))')
+    branches = relations.parse_conditional_relation('IF (T=CONST(A)) Tbl."F" WHERE("X"=CONST(""))')
     assert branches is not None
     if_cond, table, field, where = branches[0]
     assert if_cond == "(T=CONST(A))"
@@ -487,9 +488,9 @@ def test_if_else_unresolvable_branch_keeps_note() -> None:
 def test_non_conditional_relation_returns_none() -> None:
     # A regular table.field reference should not match the IF/ELSE form, so
     # _parse_conditional_relation returns None and the caller falls back.
-    assert Diagram._parse_conditional_relation('"Customer"."No."') is None
-    assert Diagram._parse_conditional_relation("Customer.No.") is None
-    assert Diagram._parse_conditional_relation("") is None
+    assert relations.parse_conditional_relation('"Customer"."No."') is None
+    assert relations.parse_conditional_relation("Customer.No.") is None
+    assert relations.parse_conditional_relation("") is None
 
 
 def test_unique_flag_renders_in_dbml() -> None:
