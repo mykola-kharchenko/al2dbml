@@ -127,18 +127,20 @@ Extensions are merged into their target tables by default. Use `--no-merge-exten
 ## Public Python API
 
 ```python
-from al2dbml import Generator, generate, GroupingConfig
+from al2dbml import Diagram, generate, GroupingConfig
 
 # One-shot helper
 dbml = generate("MyApp.app", output_path="schema.dbml")
 
 # Or step-by-step for custom grouping
-gen = Generator.from_app(
+diagram = Diagram.from_app(
     "MyApp.app",
     grouping=GroupingConfig(rules={"Documents": ["Sales*", "Purch*"]}),
 )
-print(gen.dbml())
+print(diagram.dbml())
 ```
+
+> The class was named `Generator` through 0.5.x; `Generator` remains as a deprecated alias in 0.6.x and will be removed in 0.7.0.
 
 ## Limitations
 

@@ -4,6 +4,34 @@ All notable changes to `al2dbml` land here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] - 2026-05-28
+
+### Changed
+
+- **`Generator` renamed to `Diagram`.** The class did not change; only the
+  name. The public entry point is now `from al2dbml import Diagram`. `Generator`
+  remains as a deprecated alias for one release; planned removal in 0.7.0.
+  The module path `al2dbml.diagram` is the canonical home; `al2dbml.generator`
+  stays as a back-compat shim that re-exports.
+
+### Added
+
+- New public submodules:
+  - `al2dbml.relations` — pure functions for parsing AL `TableRelation` shapes
+    (`parse_relation_string`, `parse_conditional_relation`, `parse_qualified`,
+    `find_matching_paren`).
+  - `al2dbml.properties` — `normalize(raw)` for the AL Properties shape coercion.
+- Internal `al2dbml._build` package owning each phase of the pipeline. Private
+  by convention; the public API stays on `Diagram`.
+
+### Internal
+
+- Generator/Diagram refactored into a thin orchestrator (~200 lines, was 654);
+  per-phase work owned by focused modules under `al2dbml/_build/` (enums,
+  tables, extensions, filters, references, groups). Shared state moves through
+  a `BuildContext` dataclass with an immutable `BuildConfig` alongside.
+- No CLI behaviour changes; no runtime dependency changes; all 174 tests green.
+
 ## [0.5.1] - 2026-05-28
 
 ### Added
@@ -149,6 +177,7 @@ Initial release.
 - `al2dbml` console script with `-o`, `--merge-extensions/--no-merge-extensions`, `-g`, `--no-groups`, `--no-auto-groups`, `--min-group-size`, `--version`, `-h/--help`.
 - Public Python API: `Generator`, `generate`, `GroupingConfig`, `__version__`.
 
+[0.6.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.6.0
 [0.5.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.5.1
 [0.5.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.5.0
 [0.4.4]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.4
