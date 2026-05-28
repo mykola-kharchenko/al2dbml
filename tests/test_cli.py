@@ -138,6 +138,63 @@ def test_exclude_flag_drops_tables(tmp_path: Path) -> None:
     assert 'Table "dbo"."Purchase Header"' not in result.stdout
 
 
+def test_docs_flag_overlays_aldoc_descriptions(tmp_path: Path) -> None:
+    # The fixture's aldoc tree describes 'Test Table.No.' as 'Specifies the
+    # unique number of the record.'. Pair it with an .app fixture that has
+    # the same table/field shape and the rendered DBML carries that prose.
+    payload = json.dumps(
+        {
+            "Tables": [
+                {
+                    "Name": "Test Table",
+                    "Fields": [
+                        {
+                            "Name": "No.",
+                            "TypeDefinition": {"Name": "Code", "TypeArguments": [20]},
+                        }
+                    ],
+                    "Keys": [{"FieldNames": ["No."]}],
+                }
+            ]
+        }
+    ).encode("utf-8")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("SymbolReference.json", payload)
+    app = tmp_path / "tt.app"
+    app.write_bytes(buf.getvalue())
+
+    aldoc_dir = Path(__file__).parent / "fixtures" / "aldoc_sample"
+
+    runner = CliRunner()
+    result = runner.invoke(main, [str(app), "--docs", str(aldoc_dir)])
+    assert result.exit_code == 0, result.stderr
+    assert "Specifies the unique number of the record." in result.stdout
+    # And the table summary lands as the Table Note
+    assert "A test table for fixtures." in result.stdout
+    # Stderr summary line announces what we loaded
+    assert "loaded docs for" in result.stderr
+
+
+def test_docs_short_flag_dash_d_works(tmp_path: Path) -> None:
+    app = _make_app(tmp_path)
+    aldoc_dir = Path(__file__).parent / "fixtures" / "aldoc_sample"
+    runner = CliRunner()
+    result = runner.invoke(main, [str(app), "-d", str(aldoc_dir)])
+    assert result.exit_code == 0, result.stderr
+    assert "loaded docs for" in result.stderr
+
+
+def test_docs_flag_missing_directory_fails_with_clean_error(tmp_path: Path) -> None:
+    app = _make_app(tmp_path)
+    runner = CliRunner()
+    result = runner.invoke(main, [str(app), "--docs", str(tmp_path / "nope")])
+    assert result.exit_code != 0
+    # click validates --docs with exists=True, so the error comes from click
+    # itself rather than our load_docs.
+    assert "does not exist" in result.stderr.lower() or "no such" in result.stderr.lower()
+
+
 def test_stats_flag_prints_counts_to_stderr(tmp_path: Path) -> None:
     app = _make_app(tmp_path)
     runner = CliRunner()

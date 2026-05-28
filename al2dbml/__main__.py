@@ -5,6 +5,7 @@ from pathlib import Path
 import click
 
 from . import __version__
+from .aldoc import AldocDocs, load_docs
 from .generator import Generator
 from .grouping import GroupingConfig, parse_rule_strings
 
@@ -90,6 +91,18 @@ from .grouping import GroupingConfig, parse_rule_strings
     ),
 )
 @click.option(
+    "-d",
+    "--docs",
+    "docs_dir",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
+    default=None,
+    help=(
+        "Directory of aldoc-generated YAML documentation; field descriptions "
+        "and table summaries overlay onto the diagram. Run "
+        "'aldoc generate <app> -o <dir>' first to produce it."
+    ),
+)
+@click.option(
     "--include",
     "includes",
     multiple=True,
@@ -127,6 +140,7 @@ def main(
     min_group_size: int,
     table_schema: str,
     enum_schema: str,
+    docs_dir: Path | None,
     includes: tuple[str, ...],
     excludes: tuple[str, ...],
     show_stats: bool,
@@ -145,6 +159,18 @@ def main(
         min_group_size=min_group_size,
     )
 
+    docs = AldocDocs()
+    if docs_dir is not None:
+        try:
+            docs = load_docs(docs_dir)
+        except FileNotFoundError as exc:
+            raise click.ClickException(str(exc)) from exc
+        click.echo(
+            f"loaded docs for {len(docs.table_summaries)} tables, "
+            f"{len(docs.field_descriptions)} fields",
+            err=True,
+        )
+
     # If the user only wants stats (no -o and no DBML stream to consumers),
     # skip the expensive DBML render entirely; build() alone is O(n) while
     # the pydbml render path is O(n^2) on table count.
@@ -159,6 +185,7 @@ def main(
             enum_schema=enum_schema,
             includes=list(includes),
             excludes=list(excludes),
+            docs=docs,
         )
         if needs_render:
             rendered: str | None = generator.dbml()
