@@ -4,6 +4,15 @@ All notable changes to `al2dbml` land here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.3] - 2026-05-28
+
+Cleans up the comment that appears above conditional `Ref` blocks. Output-only change; no API surface moves.
+
+### Changed
+
+- Multi-condition `WHERE` clauses on a `TableRelation` no longer inherit the AL source's line wrapping. The Ref comment is reformatted into a deliberate indented block: `where` on its own line, each condition indented two spaces, joined with ` AND` on every line but the last. Single-condition `WHERE` and `IF` clauses are unchanged. Fixes the jagged multi-line `// where ("a"=...,\n//                       "b"=...` blocks that real Base Application fields produced.
+- `IF` conditions captured from conditional `TableRelation` strings are now whitespace-normalised at parse time. Multi-line `IF (...)` clauses that wrapped across AL source lines used to leak that layout into the column-note `**Condition:**` code-span; they now collapse to a single line. Same fix path catches multi-line `WHERE` clauses for the column-note rendering.
+
 ## [0.8.2] - 2026-05-28
 
 Docs-only patch. No code or behaviour changes.
@@ -268,6 +277,7 @@ Initial release.
 - `al2dbml` console script with `-o`, `--merge-extensions/--no-merge-extensions`, `-g`, `--no-groups`, `--no-auto-groups`, `--min-group-size`, `--version`, `-h/--help`.
 - Public Python API: `Generator`, `generate`, `GroupingConfig`, `__version__`.
 
+[0.8.3]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.8.3
 [0.8.2]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.8.2
 [0.8.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.8.1
 [0.8.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.8.0
