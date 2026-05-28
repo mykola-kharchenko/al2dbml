@@ -114,6 +114,18 @@ from .grouping import GroupingConfig, GroupSource, parse_rule_strings
     ),
 )
 @click.option(
+    "--database-type",
+    "database_type",
+    metavar="NAME",
+    default="MSSQL",
+    show_default=True,
+    help=(
+        "Value for the DBML 'Project { database_type: ... }' header. "
+        "BC's underlying storage is SQL Server, so the default is MSSQL. "
+        "Pass an empty string to omit the database_type line."
+    ),
+)
+@click.option(
     "--stats",
     "show_stats",
     is_flag=True,
@@ -137,6 +149,7 @@ def main(
     docs_dir: Path | None,
     includes: tuple[str, ...],
     excludes: tuple[str, ...],
+    database_type: str,
     show_stats: bool,
 ) -> None:
     """Convert a compiled AL package APP into a DBML schema."""
@@ -187,6 +200,7 @@ def main(
             includes=list(includes),
             excludes=list(excludes),
             docs=docs,
+            database_type=database_type,
         )
     except FileNotFoundError as exc:
         raise click.ClickException(str(exc)) from exc

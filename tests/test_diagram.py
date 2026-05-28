@@ -752,6 +752,87 @@ def test_dbml_header_works_without_metadata() -> None:
     assert "AppId" not in dbml.split("\n", 2)[0]
 
 
+def test_project_block_emits_mssql_database_type_by_default() -> None:
+    # Every BC .app produces a Project block at the top of the DBML so
+    # dbdocs.io renders a useful title card. Default database_type is
+    # MSSQL since BC's underlying storage is always SQL Server.
+    symbols = dict(sample_symbols(), Name="Sample App")
+    dbml = Diagram(symbols=symbols).dbml()
+    assert 'Project "Sample App"' in dbml
+    assert "database_type: 'MSSQL'" in dbml
+
+
+def test_project_block_note_carries_package_metadata() -> None:
+    # The Note inside the Project block surfaces Name + Version +
+    # Publisher + AppId so dbdocs renders an informative description
+    # without making the consumer read the // header comment.
+    symbols = {
+        "Name": "Base Application",
+        "Version": "25.0.0.0",
+        "Publisher": "Microsoft",
+        "AppId": "437dbf0e-84ff-417a-965d-ed2bb9650972",
+        "Tables": [{"Name": "T", "Fields": [], "Keys": []}],
+    }
+    dbml = Diagram(symbols=symbols).dbml()
+    assert 'Project "Base Application"' in dbml
+    assert "Base Application 25.0.0.0 by Microsoft" in dbml
+    assert "AppId: 437dbf0e-84ff-417a-965d-ed2bb9650972" in dbml
+
+
+def test_project_block_custom_database_type_overrides_default() -> None:
+    symbols = dict(sample_symbols(), Name="Sample App")
+    dbml = Diagram(symbols=symbols, database_type="PostgreSQL").dbml()
+    assert "database_type: 'PostgreSQL'" in dbml
+    assert "database_type: 'MSSQL'" not in dbml
+
+
+def test_project_block_empty_database_type_omits_the_line() -> None:
+    # Empty string suppresses the database_type item but keeps the
+    # Project block so dbdocs still has a title + Note to render.
+    symbols = dict(sample_symbols(), Name="Sample App")
+    dbml = Diagram(symbols=symbols, database_type="").dbml()
+    assert 'Project "Sample App"' in dbml
+    assert "database_type:" not in dbml
+
+
+def test_project_block_falls_back_to_generic_name_when_metadata_missing() -> None:
+    # A symbols document with no Name / Version / Publisher still gets
+    # a Project block (carrying just database_type) so the dbdocs UI
+    # has something to label the schema with.
+    dbml = Diagram(symbols={"Tables": [{"Name": "T", "Fields": [], "Keys": []}]}).dbml()
+    assert 'Project "al2dbml export"' in dbml
+    assert "database_type: 'MSSQL'" in dbml
+    # No Note block when there is no package metadata to put in it.
+    project_start = dbml.index("Project ")
+    project_end = dbml.index("}", project_start)
+    assert "Note {" not in dbml[project_start:project_end]
+
+
+def test_project_block_skipped_entirely_when_no_name_and_no_database_type() -> None:
+    # No name and no database_type to put anywhere -> no Project block.
+    dbml = Diagram(
+        symbols={"Tables": [{"Name": "T", "Fields": [], "Keys": []}]},
+        database_type="",
+    ).dbml()
+    assert "Project " not in dbml
+
+
+def test_project_block_does_not_overwrite_caller_supplied_project() -> None:
+    # If the caller passes a pre-existing pydbml Database that already
+    # has a Project, leave it alone — our Project is a default, not a
+    # forced override.
+    from pydbml import Database
+    from pydbml.classes import Project
+
+    db = Database()
+    db.project = Project(name="CustomProject", items={"database_type": "MySQL"})
+    symbols = dict(sample_symbols(), Name="Sample App")
+    Diagram(symbols=symbols, db=db).build()
+    assert db.project is not None
+    assert db.project.name == "CustomProject"
+    assert db.project.items.get("database_type") == "MySQL"
+
+
 def test_multi_condition_where_renders_as_indented_and_block() -> None:
     # Real Base Application TableRelations have multi-condition WHERE
     # clauses (often 4+ comma-separated filters) that AL source wraps

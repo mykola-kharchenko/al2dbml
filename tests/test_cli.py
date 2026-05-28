@@ -263,3 +263,22 @@ def test_bad_archive_reports_useful_error(tmp_path: Path, ext: str) -> None:
     runner = CliRunner()
     result = runner.invoke(main, [str(bad)])
     assert result.exit_code != 0
+
+
+def test_database_type_flag_overrides_default(tmp_path: Path) -> None:
+    app = _make_app(tmp_path)
+    runner = CliRunner()
+    result = runner.invoke(main, [str(app), "--database-type", "PostgreSQL"])
+    assert result.exit_code == 0, result.stderr
+    assert "database_type: 'PostgreSQL'" in result.stdout
+    assert "database_type: 'MSSQL'" not in result.stdout
+
+
+def test_database_type_default_is_mssql(tmp_path: Path) -> None:
+    # MSSQL is the right default for any BC .app — confirm we don't
+    # silently drop the database_type item when the flag is left out.
+    app = _make_app(tmp_path)
+    runner = CliRunner()
+    result = runner.invoke(main, [str(app)])
+    assert result.exit_code == 0, result.stderr
+    assert "database_type: 'MSSQL'" in result.stdout
