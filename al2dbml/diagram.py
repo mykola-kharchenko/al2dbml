@@ -187,5 +187,6 @@ def generate(
     diagram = Diagram.from_app(app_path, **kwargs)
     rendered = diagram.dbml()
     if output_path is not None:
-        Path(output_path).write_text(rendered, encoding="utf-8")
+        # expanduser so '~/schema.dbml' works the same here as in the CLI
+        Path(output_path).expanduser().write_text(rendered, encoding="utf-8")
     return rendered

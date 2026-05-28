@@ -67,6 +67,17 @@ def test_load_docs_raises_for_missing_directory(tmp_path: Path) -> None:
         load_docs(tmp_path / "does-not-exist")
 
 
+def test_load_docs_expands_tilde_in_path(tmp_path: Path, monkeypatch) -> None:
+    # Python API parity with the CLI: '~/...' paths should expand before
+    # the is_dir() check fires.
+    monkeypatch.setenv("HOME", str(tmp_path))
+    docs_dir = tmp_path / "empty-docs"
+    docs_dir.mkdir()
+    # No tables/extensions inside; the directory just needs to resolve.
+    result = load_docs("~/empty-docs")
+    assert isinstance(result, AldocDocs)
+
+
 def test_load_docs_returns_empty_when_no_reference_subtree(tmp_path: Path) -> None:
     # Directory exists but has no reference/*/Table/ structure inside.
     docs = load_docs(tmp_path)

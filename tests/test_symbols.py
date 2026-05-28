@@ -204,3 +204,14 @@ def test_load_prefers_top_level_symbol_over_nested_app(tmp_path: Path) -> None:
     app = _write(tmp_path, "both.app", outer)
 
     assert load_symbols(app) == {"Tables": ["from-top"]}
+
+
+def test_load_expands_tilde_in_path(tmp_path: Path, monkeypatch) -> None:
+    # Python API parity with the CLI: '~/...' paths should resolve via
+    # Path.expanduser before the file-exists check fires.
+    payload = json.dumps({"Tables": ["expanded"]}).encode("utf-8")
+    _write(tmp_path, "tilde.app", _build_zip({"SymbolReference.json": payload}))
+    # Point $HOME at tmp_path so '~/tilde.app' resolves to our fixture.
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    assert load_symbols("~/tilde.app") == {"Tables": ["expanded"]}

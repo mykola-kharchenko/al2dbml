@@ -35,7 +35,9 @@ def load_symbols(app_path: str | Path) -> dict[str, Any]:
         zipfile.BadZipFile: The file is neither a ZIP nor a header-prefixed ZIP.
         json.JSONDecodeError: The JSON payload is malformed.
     """
-    path = Path(app_path)
+    # expanduser so Python API callers can pass '~/...' paths and get the
+    # same behaviour the CLI already gives them (click.Path expands tildes).
+    path = Path(app_path).expanduser()
     if not path.is_file():
         raise FileNotFoundError(f"AL package not found: {path}")
 

@@ -80,7 +80,9 @@ def load_docs(directory: str | Path) -> AldocDocs:
     Raises:
         FileNotFoundError: ``directory`` does not exist or is not a directory.
     """
-    path = Path(directory)
+    # expanduser so Python API callers can pass '~/...' paths and get the
+    # same behaviour the CLI already gives them.
+    path = Path(directory).expanduser()
     if not path.is_dir():
         raise FileNotFoundError(f"aldoc docs directory not found: {path}")
 
