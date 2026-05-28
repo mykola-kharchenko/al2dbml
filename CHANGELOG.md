@@ -4,6 +4,27 @@ All notable changes to `al2dbml` land here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.1] - 2026-05-28
+
+Post-0.8.0 review cleanup. No new features; tightens a handful of small issues surfaced by re-reading the codebase.
+
+### Fixed
+
+- `Path.expanduser()` is now applied on every Python API entry point that accepts a path string — `load_symbols`, `aldoc.load_docs`, and `generate(output_path=...)`. Calling `Diagram.from_app("~/Downloads/foo.app")` from Python now resolves the tilde the same way the CLI already did. New tests in `test_symbols.py` and `test_aldoc.py` pin the behaviour.
+
+### Changed
+
+- `al2dbml._build.context._PendingRef` is renamed to `PendingRef` (no leading underscore). The class lives inside the already-private `_build/` package, so the underscore was double-counting the "internal" signal. Only affects code that imported the private name directly from `al2dbml._build.context`.
+
+### Internal
+
+- `Diagram` class docstring gains a **Lifecycle** paragraph stating the instance is single-shot (mutating fields after `build()` is ignored because the `BuildContext` is cached). The `db=` field gains a comment about in-place mutation when an external `Database` is passed.
+- `__main__.py` narrows its `try/except (FileNotFoundError, KeyError)` to just `Diagram.from_app(...)` so a hypothetical exception from the build/render phases isn't misreported as a loader error.
+- `__main__.py` gains a comment explaining why the `cast(GroupSource, group_by.lower())` is safe (click.Choice constrains the value upstream).
+- Removed unused `AldocDocs.is_empty()` — never called from production; the test that used it now checks the two attribute dicts directly.
+- New tests: `properties.normalize` shallow-copy isolation; column-note section ordering (caption → Condition → References joined with `<br><br>`).
+- Test count: 212 → 216.
+
 ## [0.8.0] - 2026-05-28
 
 Code-shape polish + the last lingering deprecation cleanup. No new features; this is a "clean and pretty" release.
@@ -239,6 +260,7 @@ Initial release.
 - `al2dbml` console script with `-o`, `--merge-extensions/--no-merge-extensions`, `-g`, `--no-groups`, `--no-auto-groups`, `--min-group-size`, `--version`, `-h/--help`.
 - Public Python API: `Generator`, `generate`, `GroupingConfig`, `__version__`.
 
+[0.8.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.8.1
 [0.8.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.8.0
 [0.7.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.7.0
 [0.6.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.6.1
