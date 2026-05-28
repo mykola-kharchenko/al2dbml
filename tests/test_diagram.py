@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from al2dbml import relations
-from al2dbml._build.context import _PendingRef
+from al2dbml._build.context import PendingRef
 from al2dbml.diagram import Diagram
 from al2dbml.grouping import GroupingConfig
 
@@ -296,7 +296,7 @@ def test_parse_relation_string_nested_parens_in_condition() -> None:
 
 def test_pending_ref_dataclass_is_internal() -> None:
     # Sanity: the helper dataclass is exposed for tests only.
-    ref = _PendingRef("A", "a", "B", "b", None)
+    ref = PendingRef("A", "a", "B", "b", None)
     assert ref.target_table == "B"
 
 

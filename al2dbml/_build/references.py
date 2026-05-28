@@ -1,6 +1,6 @@
 r"""Reference resolution phase.
 
-Converts the ``_PendingRef`` entries collected by
+Converts the ``PendingRef`` entries collected by
 :class:`al2dbml._build.tables.TableBuilder` and
 :class:`al2dbml._build.extensions.ExtensionBuilder` into pydbml ``Reference``
 objects on the database. Handles three kinds of degradation:
@@ -21,7 +21,7 @@ from .context import BuildContext
 
 
 class ReferenceResolver:
-    """Resolves ``_PendingRef`` entries into ``Reference`` objects.
+    """Resolves ``PendingRef`` entries into ``Reference`` objects.
 
     Bypasses ``pydbml.Database.add_reference``'s built-in duplicate check
     (which is O(n) per add via recursive ``__eq__`` and ballooned build time

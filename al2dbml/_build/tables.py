@@ -14,7 +14,7 @@ from pydbml.classes import Column, Note, Table
 
 from .. import properties, relations
 from ..types import map_al_type
-from .context import BuildContext, _PendingRef
+from .context import BuildContext, PendingRef
 
 
 class TableBuilder:
@@ -79,7 +79,7 @@ class TableBuilder:
     ) -> Column | None:
         """Construct one ``Column`` from an AL field definition.
 
-        Side effect: appends deferred ``_PendingRef`` entries to
+        Side effect: appends deferred ``PendingRef`` entries to
         ``ctx.pending_refs`` for any ``TableRelation`` clauses on the field.
         Returns ``None`` for fields without a usable ``Name``.
 
@@ -133,7 +133,7 @@ class TableBuilder:
                 for if_cond, br_table, br_field, br_where in branches:
                     if br_table:
                         ctx.pending_refs.append(
-                            _PendingRef(
+                            PendingRef(
                                 source_table=table_name,
                                 source_field=fname,
                                 target_table=br_table,
@@ -163,7 +163,7 @@ class TableBuilder:
                 target_table, target_field, condition = relations.parse_relation_string(relation)
                 if target_table:
                     ctx.pending_refs.append(
-                        _PendingRef(
+                        PendingRef(
                             source_table=table_name,
                             source_field=fname,
                             target_table=target_table,

@@ -13,7 +13,7 @@ from ..grouping import GroupingConfig
 
 
 @dataclass
-class _PendingRef:
+class PendingRef:
     """A reference that's been parsed out of an AL ``TableRelation`` but not
     yet resolved to a pydbml ``Reference``.
 
@@ -63,5 +63,5 @@ class BuildContext:
     enums: dict[str, Enum] = field(default_factory=dict)
     tables: dict[str, Table] = field(default_factory=dict)
     columns: dict[tuple[str, str], Column] = field(default_factory=dict)
-    pending_refs: list[_PendingRef] = field(default_factory=list)
+    pending_refs: list[PendingRef] = field(default_factory=list)
     table_namespaces: dict[str, str] = field(default_factory=dict)
