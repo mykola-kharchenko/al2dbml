@@ -14,6 +14,7 @@ from typing import Any
 
 from pydbml import Database
 
+from .__meta__ import __version__
 from ._build.context import BuildConfig, BuildContext
 from ._build.enums import EnumBuilder
 from ._build.extensions import ExtensionBuilder
@@ -138,8 +139,6 @@ class Diagram:
 
     def _header_comment(self) -> str:
         """Return a short provenance preamble identifying the tool + source package."""
-        from . import __version__
-
         name = self.symbols.get("Name")
         version = self.symbols.get("Version")
         publisher = self.symbols.get("Publisher")
