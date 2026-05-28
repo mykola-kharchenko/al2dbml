@@ -4,6 +4,12 @@ All notable changes to `al2dbml` land here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.1] - 2026-05-28
+
+### Added
+
+- Conditional `IF/ELSE` `TableRelation` branches now annotate their generated `Ref` blocks with the originating IF condition (and any per-branch `WHERE` filter) as a DBML `//` comment immediately above the block. dbdocs.io and dbdiagram.io display this alongside the relationship, so a column with five branches pointing to five different targets now visibly explains *which* condition selects each arrow. Plain non-conditional refs without a `WHERE` are unchanged (no spurious comment lines added).
+
 ## [0.5.0] - 2026-05-28
 
 ### Added
@@ -143,6 +149,7 @@ Initial release.
 - `al2dbml` console script with `-o`, `--merge-extensions/--no-merge-extensions`, `-g`, `--no-groups`, `--no-auto-groups`, `--min-group-size`, `--version`, `-h/--help`.
 - Public Python API: `Generator`, `generate`, `GroupingConfig`, `__version__`.
 
+[0.5.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.5.1
 [0.5.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.5.0
 [0.4.4]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.4
 [0.4.3]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.3
