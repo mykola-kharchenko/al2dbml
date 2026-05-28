@@ -4,6 +4,14 @@ All notable changes to `al2dbml` land here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.2] - 2026-05-28
+
+Docs-only patch. No code or behaviour changes.
+
+### Fixed
+
+- README no longer references the `--no-auto-groups` CLI flag, which was removed in 0.8.0 in favour of `--group-by none`. The grouping section above already documents the replacement, so the stale sentence is deleted outright.
+
 ## [0.8.1] - 2026-05-28
 
 Post-0.8.0 review cleanup. No new features; tightens a handful of small issues surfaced by re-reading the codebase.
@@ -260,6 +268,7 @@ Initial release.
 - `al2dbml` console script with `-o`, `--merge-extensions/--no-merge-extensions`, `-g`, `--no-groups`, `--no-auto-groups`, `--min-group-size`, `--version`, `-h/--help`.
 - Public Python API: `Generator`, `generate`, `GroupingConfig`, `__version__`.
 
+[0.8.2]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.8.2
 [0.8.1]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.8.1
 [0.8.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.8.0
 [0.7.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.7.0
