@@ -71,3 +71,11 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    # pydbml's internal pyparsing usage triggers 33 deprecation warnings
+    # per test run (escChar=, oneOf, leaveWhitespace, parseAll, addParseAction);
+    # all are upstream issues in pydbml/pyparsing, nothing we can fix here.
+    # Suppressing keeps the test output focused on warnings we actually own.
+    "ignore::DeprecationWarning:pyparsing",
+    "ignore::DeprecationWarning:pydbml",
+]
