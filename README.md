@@ -96,8 +96,6 @@ al2dbml MyApp.app --no-groups
 al2dbml MyApp.app --min-group-size 1
 ```
 
-`--no-auto-groups` switches off the first-word fallback so only your explicit `-g` rules apply.
-
 ## Rich field descriptions (aldoc overlay)
 
 By default, column notes are built from the AL `Caption` property in `SymbolReference.json` — which is usually just the field name itself. Real BC field documentation (the "Specifies the customer number..." sentences you see on [Microsoft Learn](https://learn.microsoft.com/dynamics365/business-central/dev-itpro)) lives in the AL `ToolTip` property and `/// <summary>` XML doc comments, neither of which the compiled `.app` package preserves.
