@@ -145,6 +145,9 @@ def main(
     except ValueError as exc:
         raise click.BadParameter(str(exc), param_hint="-g/--group") from exc
 
+    # Safe cast: click.Choice(['namespace', 'word', 'none']) above
+    # constrains group_by to one of those three strings before we get
+    # here, so .lower() always yields a valid GroupSource literal.
     source = cast(GroupSource, group_by.lower())
     grouping = GroupingConfig(
         enabled=not no_groups,
@@ -170,6 +173,10 @@ def main(
     # the pydbml render path is O(n^2) on table count.
     needs_render = output is not None or not show_stats
 
+    # Only the from_app() call can raise FileNotFoundError (.app missing)
+    # or KeyError (SymbolReference.json missing from the archive); keep the
+    # try-block scoped to it so a hypothetical exception from the build or
+    # render phases bubbles up instead of being misreported as a load error.
     try:
         diagram = Diagram.from_app(
             app,
@@ -181,15 +188,16 @@ def main(
             excludes=list(excludes),
             docs=docs,
         )
-        if needs_render:
-            rendered: str | None = diagram.dbml()
-        else:
-            diagram.build()
-            rendered = None
     except FileNotFoundError as exc:
         raise click.ClickException(str(exc)) from exc
     except KeyError as exc:
         raise click.ClickException(str(exc)) from exc
+
+    if needs_render:
+        rendered: str | None = diagram.dbml()
+    else:
+        diagram.build()
+        rendered = None
 
     counts = diagram.stats()
     if show_stats:
