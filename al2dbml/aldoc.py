@@ -57,9 +57,6 @@ class AldocDocs:
     table_summaries: dict[str, str] = field(default_factory=dict)
     field_descriptions: dict[tuple[str, str], str] = field(default_factory=dict)
 
-    def is_empty(self) -> bool:
-        return not self.table_summaries and not self.field_descriptions
-
 
 def load_docs(directory: str | Path) -> AldocDocs:
     """Walk an aldoc output directory and index field/table documentation.

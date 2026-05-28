@@ -82,7 +82,8 @@ def test_load_docs_returns_empty_when_no_reference_subtree(tmp_path: Path) -> No
     # Directory exists but has no reference/*/Table/ structure inside.
     docs = load_docs(tmp_path)
     assert isinstance(docs, AldocDocs)
-    assert docs.is_empty()
+    assert not docs.table_summaries
+    assert not docs.field_descriptions
 
 
 @pytest.mark.parametrize(
