@@ -98,6 +98,28 @@ al2dbml MyApp.app --min-group-size 1
 
 `--no-auto-groups` switches off the first-word fallback so only your explicit `-g` rules apply.
 
+## Rich field descriptions (aldoc overlay)
+
+By default, column notes are built from the AL `Caption` property in `SymbolReference.json` — which is usually just the field name itself. Real BC field documentation (the "Specifies the customer number..." sentences you see on [Microsoft Learn](https://learn.microsoft.com/dynamics365/business-central/dev-itpro)) lives in the AL `ToolTip` property and `/// <summary>` XML doc comments, neither of which the compiled `.app` package preserves.
+
+To get those rich descriptions into your diagram, run [`aldoc`](https://learn.microsoft.com/dynamics365/business-central/dev-itpro/developer/devenv-al-doc) (Microsoft's official AL documentation generator, bundled with the AL Language VS Code extension) once to produce a YAML reference tree, then point `al2dbml` at it with `-d`/`--docs`:
+
+```bash
+# Step 1: generate docs from your .app (slow, but only once per release)
+aldoc generate MyApp.app -o ./myapp-docs/
+
+# Step 2: render the DBML with descriptions overlaid (fast)
+al2dbml MyApp.app --docs ./myapp-docs/ -o schema.dbml
+```
+
+The result:
+
+- Each table block gets a `Note { ... }` body sourced from the AL `/// <summary>` of the table — e.g. *"Stores document-level information for sales quotes, orders, invoices, credit memos, blanket orders, and return orders."*
+- Each column note leads with the AL `ToolTip` text — e.g. *"Specifies the customer number to whom the goods or services are sold."*
+- Existing condition / `**References**` sections still follow, separated by `<br><br>`
+
+Coverage is uneven: active-document tables (Sales Header, Customer, Item, etc.) are richly documented in real BC; history and buffer tables often have nothing. Where aldoc has no entry, the original Caption-based note (or no note) is used.
+
 ## TableExtensions
 
 Extensions are merged into their target tables by default. Use `--no-merge-extensions` to emit them as separate `<Target> (Extension)` tables instead.

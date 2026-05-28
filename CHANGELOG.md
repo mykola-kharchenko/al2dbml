@@ -4,6 +4,21 @@ All notable changes to `al2dbml` land here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-05-28
+
+### Added
+
+- **`-d` / `--docs PATH` flag** — overlays a directory of [`aldoc`](https://learn.microsoft.com/dynamics365/business-central/dev-itpro/developer/devenv-al-doc)-generated YAML documentation onto the diagram. Each table gets a `Note { ... }` body from its AL `/// <summary>`, and each column note leads with the field's `ToolTip` text (the "Specifies the..." prose you see on Microsoft Learn). Coverage is uneven — active-doc tables are richly documented, history/buffer tables typically aren't — but where present the diagram gains Microsoft Learn-quality field descriptions. See the new "Rich field descriptions (aldoc overlay)" section in the README for the workflow.
+- New module `al2dbml/aldoc.py` exposing `AldocDocs` dataclass and `load_docs(directory)`. `Generator` gains a `docs: AldocDocs` field for the Python API.
+
+### Changed
+
+- aldoc field descriptions take priority over AL `Caption` in column notes when both are present (aldoc prose is strictly richer).
+
+### Breaking (runtime dependency)
+
+- Adds **PyYAML>=6** as a runtime dependency (needed by the aldoc YAML loader). `uv tool upgrade al2dbml` handles this automatically.
+
 ## [0.4.4] - 2026-05-27
 
 ### Fixed
@@ -128,6 +143,7 @@ Initial release.
 - `al2dbml` console script with `-o`, `--merge-extensions/--no-merge-extensions`, `-g`, `--no-groups`, `--no-auto-groups`, `--min-group-size`, `--version`, `-h/--help`.
 - Public Python API: `Generator`, `generate`, `GroupingConfig`, `__version__`.
 
+[0.5.0]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.5.0
 [0.4.4]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.4
 [0.4.3]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.3
 [0.4.2]: https://github.com/mykola-kharchenko/al2dbml/releases/tag/v0.4.2
