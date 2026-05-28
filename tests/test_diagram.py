@@ -247,7 +247,7 @@ def test_disabled_grouping_emits_no_table_groups() -> None:
 def test_pending_refs_are_collected() -> None:
     gen = Diagram(symbols=sample_symbols())
     gen.build()
-    targets = {(r.source_table, r.source_field, r.target_table) for r in gen._pending_refs}
+    targets = {(r.source_table, r.source_field, r.target_table) for r in gen.context.pending_refs}
     assert ("Sales Header", "Sell-to Customer No.", "Customer") in targets
     assert ("Sales Line", "Document No.", "Sales Header") in targets
     assert ("Sales Line", "Vendor No.", "Vendor") in targets
@@ -332,19 +332,19 @@ def test_default_table_schema_is_dbo() -> None:
     gen = Diagram(symbols=sample_symbols())
     gen.build()
     for name in ("Customer", "Sales Header", "Sales Line"):
-        assert gen._tables[name].schema == "dbo"
+        assert gen.context.tables[name].schema == "dbo"
 
 
 def test_table_schema_override_is_respected() -> None:
     gen = Diagram(symbols=sample_symbols(), table_schema="custom")
     gen.build()
-    assert gen._tables["Customer"].schema == "custom"
+    assert gen.context.tables["Customer"].schema == "custom"
 
 
 def test_extension_stub_carries_configured_table_schema() -> None:
     gen = Diagram(symbols=sample_symbols(), merge_extensions=False, table_schema="dbo")
     gen.build()
-    assert gen._tables["Customer (Extension)"].schema == "dbo"
+    assert gen.context.tables["Customer (Extension)"].schema == "dbo"
 
 
 def test_table_and_enum_schemas_are_independent() -> None:
@@ -352,20 +352,20 @@ def test_table_and_enum_schemas_are_independent() -> None:
     # vice versa. They are deliberately separate dataclass fields.
     gen = Diagram(symbols=sample_symbols(), table_schema="alpha", enum_schema="beta")
     gen.build()
-    assert gen._tables["Customer"].schema == "alpha"
-    assert gen._enums["Customer Type"].schema == "beta"
+    assert gen.context.tables["Customer"].schema == "alpha"
+    assert gen.context.enums["Customer Type"].schema == "beta"
 
 
 def test_not_null_flag_set_when_notblank_true() -> None:
     gen = Diagram(symbols=sample_symbols())
     gen.build()
-    assert gen._columns[("Customer", "Email")].not_null is True
+    assert gen.context.columns[("Customer", "Email")].not_null is True
 
 
 def test_not_null_flag_not_set_for_pk_field() -> None:
     gen = Diagram(symbols=sample_symbols())
     gen.build()
-    pk_col = gen._columns[("Customer", "No.")]
+    pk_col = gen.context.columns[("Customer", "No.")]
     assert pk_col.pk is True
     # PKs imply not-null in DBML; we deliberately leave the flag off
     assert pk_col.not_null is False
@@ -374,7 +374,7 @@ def test_not_null_flag_not_set_for_pk_field() -> None:
 def test_secondary_single_column_key_marks_column_unique() -> None:
     gen = Diagram(symbols=sample_symbols())
     gen.build()
-    assert gen._columns[("Customer", "Email")].unique is True
+    assert gen.context.columns[("Customer", "Email")].unique is True
 
 
 def test_multi_column_secondary_key_does_not_mark_unique() -> None:
@@ -382,7 +382,7 @@ def test_multi_column_secondary_key_does_not_mark_unique() -> None:
     gen.build()
     # Sales Header's only key is the multi-field PK; nothing should be unique.
     for fname in ("Document Type", "No.", "Sell-to Customer No."):
-        col = gen._columns[("Sales Header", fname)]
+        col = gen.context.columns[("Sales Header", fname)]
         assert col.unique is False, f"{fname} should not be marked unique"
 
 
@@ -406,7 +406,7 @@ def test_notnull_property_alternative_spelling() -> None:
     gen = Diagram(symbols=symbols)
     gen.build()
     # x is PK so not_null stays False (PK implies not-null in DBML already)
-    assert gen._columns[("T", "x")].not_null is False
+    assert gen.context.columns[("T", "x")].not_null is False
 
     # Same with a non-PK field
     symbols["Tables"][0]["Fields"].append(
@@ -418,13 +418,13 @@ def test_notnull_property_alternative_spelling() -> None:
     )
     gen2 = Diagram(symbols=symbols)
     gen2.build()
-    assert gen2._columns[("T", "y")].not_null is True
+    assert gen2.context.columns[("T", "y")].not_null is True
 
 
 def test_if_else_emits_one_ref_per_branch() -> None:
     gen = Diagram(symbols=sample_symbols())
     gen.build()
-    targets = {(r.source_table, r.source_field, r.target_table) for r in gen._pending_refs}
+    targets = {(r.source_table, r.source_field, r.target_table) for r in gen.context.pending_refs}
     assert ("Sales Line", "Source No.", "Item") in targets
     assert ("Sales Line", "Source No.", "Resource") in targets
 
@@ -523,19 +523,19 @@ def test_dbml_starts_with_provenance_header() -> None:
 def test_include_keeps_only_matching_tables() -> None:
     gen = Diagram(symbols=sample_symbols(), includes=["Sales*"])
     gen.build()
-    assert "Sales Header" in gen._tables
-    assert "Sales Line" in gen._tables
-    assert "Customer" not in gen._tables
-    assert "Purchase Header" not in gen._tables
+    assert "Sales Header" in gen.context.tables
+    assert "Sales Line" in gen.context.tables
+    assert "Customer" not in gen.context.tables
+    assert "Purchase Header" not in gen.context.tables
 
 
 def test_exclude_drops_matching_tables() -> None:
     gen = Diagram(symbols=sample_symbols(), excludes=["Purchase*"])
     gen.build()
-    assert "Customer" in gen._tables
-    assert "Sales Header" in gen._tables
-    assert "Purchase Header" not in gen._tables
-    assert "Purchase Line" not in gen._tables
+    assert "Customer" in gen.context.tables
+    assert "Sales Header" in gen.context.tables
+    assert "Purchase Header" not in gen.context.tables
+    assert "Purchase Line" not in gen.context.tables
 
 
 def test_exclude_wins_over_include() -> None:
@@ -545,10 +545,10 @@ def test_exclude_wins_over_include() -> None:
         excludes=["*Line*"],
     )
     gen.build()
-    assert "Sales Header" in gen._tables
-    assert "Purchase Header" in gen._tables
-    assert "Sales Line" not in gen._tables
-    assert "Purchase Line" not in gen._tables
+    assert "Sales Header" in gen.context.tables
+    assert "Purchase Header" in gen.context.tables
+    assert "Sales Line" not in gen.context.tables
+    assert "Purchase Line" not in gen.context.tables
 
 
 def test_ref_to_filtered_target_degrades_to_note() -> None:
@@ -566,13 +566,13 @@ def test_default_enum_schema_is_meta() -> None:
     # AL-language metadata, not SQL objects. Separate from the table schema.
     gen = Diagram(symbols=sample_symbols())
     gen.build()
-    assert gen._enums["Customer Type"].schema == "meta"
+    assert gen.context.enums["Customer Type"].schema == "meta"
 
 
 def test_enum_schema_override_is_respected() -> None:
     gen = Diagram(symbols=sample_symbols(), enum_schema="custom")
     gen.build()
-    assert gen._enums["Customer Type"].schema == "custom"
+    assert gen.context.enums["Customer Type"].schema == "custom"
 
 
 def test_enum_rendered_with_meta_schema_prefix() -> None:
@@ -587,7 +587,7 @@ def test_enum_items_carry_ordinal_as_note() -> None:
     # Company ordinal 1, Government ordinal 10 (from the extension).
     gen = Diagram(symbols=sample_symbols())
     gen.build()
-    items = {i.name: i.note.text for i in gen._enums["Customer Type"].items}
+    items = {i.name: i.note.text for i in gen.context.enums["Customer Type"].items}
     assert items == {"Person": "0", "Company": "1", "Government": "10"}
 
 
@@ -615,7 +615,7 @@ def test_empty_enum_value_substituted_with_single_space() -> None:
     }
     gen = Diagram(symbols=symbols)
     gen.build()
-    item_names = [i.name for i in gen._enums["Blocked"].items]
+    item_names = [i.name for i in gen.context.enums["Blocked"].items]
     assert item_names == [" ", "Ship", "All"]
 
 
@@ -631,7 +631,7 @@ def test_single_space_enum_value_passes_through() -> None:
     }
     gen = Diagram(symbols=symbols)
     gen.build()
-    item_names = [i.name for i in gen._enums["Type"].items]
+    item_names = [i.name for i in gen.context.enums["Type"].items]
     assert item_names == [" ", "Item"]
 
 
@@ -643,7 +643,7 @@ def test_enum_extension_empty_value_also_substituted() -> None:
     }
     gen = Diagram(symbols=symbols)
     gen.build()
-    item_names = [i.name for i in gen._enums["E"].items]
+    item_names = [i.name for i in gen.context.enums["E"].items]
     assert item_names == ["A", " ", "B"]
 
 
