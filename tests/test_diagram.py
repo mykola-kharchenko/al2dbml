@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from al2dbml.generator import Generator, _PendingRef
+from al2dbml._build.context import _PendingRef
+from al2dbml.diagram import Diagram
 from al2dbml.grouping import GroupingConfig
 
 from .fixtures.sample_symbols import sample_symbols
 
 
 def _build(**kwargs) -> str:
-    gen = Generator(symbols=sample_symbols(), **kwargs)
+    gen = Diagram(symbols=sample_symbols(), **kwargs)
     return gen.dbml()
 
 
@@ -146,7 +147,7 @@ def test_cross_package_references_are_deduped_per_column() -> None:
             }
         ]
     }
-    dbml = Generator(symbols=symbols).dbml()
+    dbml = Diagram(symbols=symbols).dbml()
     # The 'References Missing."x" (cross-package)' string should appear once,
     # not three times, even though three branches independently target Missing.
     assert dbml.count("(cross-package)") == 1
@@ -156,7 +157,7 @@ def test_aldoc_table_summary_becomes_table_note() -> None:
     from al2dbml.aldoc import AldocDocs
 
     docs = AldocDocs(table_summaries={"Customer": "Stores customer master data."})
-    dbml = Generator(symbols=sample_symbols(), docs=docs).dbml()
+    dbml = Diagram(symbols=sample_symbols(), docs=docs).dbml()
     # The Table block gains a Note { ... } body sourced from aldoc, replacing
     # the bare 'Customer' caption that was used before.
     assert "Stores customer master data." in dbml
@@ -166,7 +167,7 @@ def test_aldoc_field_description_replaces_caption_in_column_note() -> None:
     from al2dbml.aldoc import AldocDocs
 
     docs = AldocDocs(field_descriptions={("Customer", "Email"): "Primary contact email."})
-    dbml = Generator(symbols=sample_symbols(), docs=docs).dbml()
+    dbml = Diagram(symbols=sample_symbols(), docs=docs).dbml()
     # The aldoc description takes the column-note slot
     assert "Primary contact email." in dbml
 
@@ -192,7 +193,7 @@ def test_aldoc_description_takes_priority_over_caption() -> None:
         ]
     }
     docs = AldocDocs(field_descriptions={("T", "x"): "Description text from aldoc."})
-    dbml = Generator(symbols=symbols, docs=docs).dbml()
+    dbml = Diagram(symbols=symbols, docs=docs).dbml()
     assert "Description text from aldoc." in dbml
     assert "Caption text" not in dbml
 
@@ -200,7 +201,7 @@ def test_aldoc_description_takes_priority_over_caption() -> None:
 def test_no_aldoc_docs_preserves_existing_caption_behaviour() -> None:
     # When docs is the default empty AldocDocs, captions still appear when
     # they differ from the field name (existing behaviour, not regressed).
-    dbml = Generator(symbols=sample_symbols()).dbml()
+    dbml = Diagram(symbols=sample_symbols()).dbml()
     # Customer is the only fixture table with a caption that equals its name
     # for every field; the rendered DBML should be unchanged from pre-aldoc.
     assert "Customer" in dbml
@@ -231,7 +232,7 @@ def test_caption_equal_to_name_is_not_emitted_as_note() -> None:
             }
         ]
     }
-    dbml = Generator(symbols=symbols).dbml()
+    dbml = Diagram(symbols=symbols).dbml()
     assert "[note: 'MatchesCaption']" not in dbml
     assert "[note: 'Different label']" in dbml
 
@@ -242,7 +243,7 @@ def test_disabled_grouping_emits_no_table_groups() -> None:
 
 
 def test_pending_refs_are_collected() -> None:
-    gen = Generator(symbols=sample_symbols())
+    gen = Diagram(symbols=sample_symbols())
     gen.build()
     targets = {(r.source_table, r.source_field, r.target_table) for r in gen._pending_refs}
     assert ("Sales Header", "Sell-to Customer No.", "Customer") in targets
@@ -252,12 +253,12 @@ def test_pending_refs_are_collected() -> None:
 
 def test_from_app_classmethod_has_docstring() -> None:
     # Smoke check: the public API is importable and documented.
-    assert Generator.from_app.__doc__ is not None
-    assert "compiled" in Generator.from_app.__doc__.lower()
+    assert Diagram.from_app.__doc__ is not None
+    assert "compiled" in Diagram.from_app.__doc__.lower()
 
 
 def test_parse_relation_string_dict_form() -> None:
-    table, field, cond = Generator._parse_relation_string(
+    table, field, cond = Diagram._parse_relation_string(
         {"Table": "Customer", "Field": "No.", "Condition": '("Blocked"=CONST(""))'}
     )
     assert (table, field, cond) == (
@@ -268,7 +269,7 @@ def test_parse_relation_string_dict_form() -> None:
 
 
 def test_parse_relation_string_quoted_qualified_with_where() -> None:
-    table, field, cond = Generator._parse_relation_string(
+    table, field, cond = Diagram._parse_relation_string(
         '"Customer"."No." WHERE("Blocked"=CONST(" "))'
     )
     assert table == "Customer"
@@ -277,12 +278,12 @@ def test_parse_relation_string_quoted_qualified_with_where() -> None:
 
 
 def test_parse_relation_string_bare_table_only() -> None:
-    table, field, cond = Generator._parse_relation_string("Customer")
+    table, field, cond = Diagram._parse_relation_string("Customer")
     assert (table, field, cond) == ("Customer", None, None)
 
 
 def test_parse_relation_string_nested_parens_in_condition() -> None:
-    table, field, cond = Generator._parse_relation_string(
+    table, field, cond = Diagram._parse_relation_string(
         'Item."No." WHERE(Type=CONST(Item),Blocked=CONST(FALSE))'
     )
     assert table == "Item"
@@ -297,27 +298,27 @@ def test_pending_ref_dataclass_is_internal() -> None:
 
 
 def test_dbml_is_idempotent() -> None:
-    gen = Generator(symbols=sample_symbols())
+    gen = Diagram(symbols=sample_symbols())
     first = gen.dbml()
     second = gen.dbml()
     assert first == second
 
 
 def test_default_table_schema_is_dbo() -> None:
-    gen = Generator(symbols=sample_symbols())
+    gen = Diagram(symbols=sample_symbols())
     gen.build()
     for name in ("Customer", "Sales Header", "Sales Line"):
         assert gen._tables[name].schema == "dbo"
 
 
 def test_table_schema_override_is_respected() -> None:
-    gen = Generator(symbols=sample_symbols(), table_schema="custom")
+    gen = Diagram(symbols=sample_symbols(), table_schema="custom")
     gen.build()
     assert gen._tables["Customer"].schema == "custom"
 
 
 def test_extension_stub_carries_configured_table_schema() -> None:
-    gen = Generator(symbols=sample_symbols(), merge_extensions=False, table_schema="dbo")
+    gen = Diagram(symbols=sample_symbols(), merge_extensions=False, table_schema="dbo")
     gen.build()
     assert gen._tables["Customer (Extension)"].schema == "dbo"
 
@@ -325,20 +326,20 @@ def test_extension_stub_carries_configured_table_schema() -> None:
 def test_table_and_enum_schemas_are_independent() -> None:
     # Renaming the table schema must not bleed into the enum schema and
     # vice versa. They are deliberately separate dataclass fields.
-    gen = Generator(symbols=sample_symbols(), table_schema="alpha", enum_schema="beta")
+    gen = Diagram(symbols=sample_symbols(), table_schema="alpha", enum_schema="beta")
     gen.build()
     assert gen._tables["Customer"].schema == "alpha"
     assert gen._enums["Customer Type"].schema == "beta"
 
 
 def test_not_null_flag_set_when_notblank_true() -> None:
-    gen = Generator(symbols=sample_symbols())
+    gen = Diagram(symbols=sample_symbols())
     gen.build()
     assert gen._columns[("Customer", "Email")].not_null is True
 
 
 def test_not_null_flag_not_set_for_pk_field() -> None:
-    gen = Generator(symbols=sample_symbols())
+    gen = Diagram(symbols=sample_symbols())
     gen.build()
     pk_col = gen._columns[("Customer", "No.")]
     assert pk_col.pk is True
@@ -347,13 +348,13 @@ def test_not_null_flag_not_set_for_pk_field() -> None:
 
 
 def test_secondary_single_column_key_marks_column_unique() -> None:
-    gen = Generator(symbols=sample_symbols())
+    gen = Diagram(symbols=sample_symbols())
     gen.build()
     assert gen._columns[("Customer", "Email")].unique is True
 
 
 def test_multi_column_secondary_key_does_not_mark_unique() -> None:
-    gen = Generator(symbols=sample_symbols())
+    gen = Diagram(symbols=sample_symbols())
     gen.build()
     # Sales Header's only key is the multi-field PK; nothing should be unique.
     for fname in ("Document Type", "No.", "Sell-to Customer No."):
@@ -378,7 +379,7 @@ def test_notnull_property_alternative_spelling() -> None:
             }
         ]
     }
-    gen = Generator(symbols=symbols)
+    gen = Diagram(symbols=symbols)
     gen.build()
     # x is PK so not_null stays False (PK implies not-null in DBML already)
     assert gen._columns[("T", "x")].not_null is False
@@ -391,13 +392,13 @@ def test_notnull_property_alternative_spelling() -> None:
             "Properties": [{"Name": "NotNull", "Value": True}],
         }
     )
-    gen2 = Generator(symbols=symbols)
+    gen2 = Diagram(symbols=symbols)
     gen2.build()
     assert gen2._columns[("T", "y")].not_null is True
 
 
 def test_if_else_emits_one_ref_per_branch() -> None:
-    gen = Generator(symbols=sample_symbols())
+    gen = Diagram(symbols=sample_symbols())
     gen.build()
     targets = {(r.source_table, r.source_field, r.target_table) for r in gen._pending_refs}
     assert ("Sales Line", "Source No.", "Item") in targets
@@ -405,14 +406,14 @@ def test_if_else_emits_one_ref_per_branch() -> None:
 
 
 def test_if_else_branches_carry_conditions_in_note() -> None:
-    dbml = Generator(symbols=sample_symbols()).dbml()
+    dbml = Diagram(symbols=sample_symbols()).dbml()
     # The Source No. column on Sales Line should carry per-branch notes
     assert "IF (Type=CONST(Item))" in dbml
     assert "IF (Type=CONST(Resource))" in dbml
 
 
 def test_if_else_default_branch_no_condition() -> None:
-    branches = Generator._parse_conditional_relation('IF (Cond1) "T1"."f1" ELSE "T2"."f2"')
+    branches = Diagram._parse_conditional_relation('IF (Cond1) "T1"."f1" ELSE "T2"."f2"')
     assert branches is not None
     assert len(branches) == 2
     assert branches[0][0] == "(Cond1)"
@@ -422,7 +423,7 @@ def test_if_else_default_branch_no_condition() -> None:
 
 
 def test_if_else_with_per_branch_where() -> None:
-    branches = Generator._parse_conditional_relation('IF (T=CONST(A)) Tbl."F" WHERE("X"=CONST(""))')
+    branches = Diagram._parse_conditional_relation('IF (T=CONST(A)) Tbl."F" WHERE("X"=CONST(""))')
     assert branches is not None
     if_cond, table, field, where = branches[0]
     assert if_cond == "(T=CONST(A))"
@@ -433,7 +434,7 @@ def test_if_else_with_per_branch_where() -> None:
 
 def test_if_else_unresolvable_branch_keeps_note() -> None:
     # A branch pointing to a table that isn't in the symbols still appears in the note.
-    dbml = Generator(
+    dbml = Diagram(
         symbols={
             "Tables": [
                 {
@@ -462,13 +463,13 @@ def test_if_else_unresolvable_branch_keeps_note() -> None:
 def test_non_conditional_relation_returns_none() -> None:
     # A regular table.field reference should not match the IF/ELSE form, so
     # _parse_conditional_relation returns None and the caller falls back.
-    assert Generator._parse_conditional_relation('"Customer"."No."') is None
-    assert Generator._parse_conditional_relation("Customer.No.") is None
-    assert Generator._parse_conditional_relation("") is None
+    assert Diagram._parse_conditional_relation('"Customer"."No."') is None
+    assert Diagram._parse_conditional_relation("Customer.No.") is None
+    assert Diagram._parse_conditional_relation("") is None
 
 
 def test_unique_flag_renders_in_dbml() -> None:
-    dbml = Generator(symbols=sample_symbols()).dbml()
+    dbml = Diagram(symbols=sample_symbols()).dbml()
     # The Email column on Customer should have both flags in some order
     # (pydbml controls the in-block ordering); assert each substring independently.
     assert '"Email" varchar(80)' in dbml
@@ -488,7 +489,7 @@ def test_dbml_starts_with_provenance_header() -> None:
             "AppId": "00000000-0000-0000-0000-000000000001",
         }
     )
-    dbml = Generator(symbols=symbols).dbml()
+    dbml = Diagram(symbols=symbols).dbml()
     first_line = dbml.split("\n", 1)[0]
     assert first_line.startswith("// Generated by al2dbml")
     assert "Sample App 1.2.3.4 by ACME" in first_line
@@ -496,7 +497,7 @@ def test_dbml_starts_with_provenance_header() -> None:
 
 
 def test_include_keeps_only_matching_tables() -> None:
-    gen = Generator(symbols=sample_symbols(), includes=["Sales*"])
+    gen = Diagram(symbols=sample_symbols(), includes=["Sales*"])
     gen.build()
     assert "Sales Header" in gen._tables
     assert "Sales Line" in gen._tables
@@ -505,7 +506,7 @@ def test_include_keeps_only_matching_tables() -> None:
 
 
 def test_exclude_drops_matching_tables() -> None:
-    gen = Generator(symbols=sample_symbols(), excludes=["Purchase*"])
+    gen = Diagram(symbols=sample_symbols(), excludes=["Purchase*"])
     gen.build()
     assert "Customer" in gen._tables
     assert "Sales Header" in gen._tables
@@ -514,7 +515,7 @@ def test_exclude_drops_matching_tables() -> None:
 
 
 def test_exclude_wins_over_include() -> None:
-    gen = Generator(
+    gen = Diagram(
         symbols=sample_symbols(),
         includes=["Sales*", "Purchase*"],
         excludes=["*Line*"],
@@ -529,7 +530,7 @@ def test_exclude_wins_over_include() -> None:
 def test_ref_to_filtered_target_degrades_to_note() -> None:
     # Customer is filtered out; Sales Header.Sell-to Customer No. -> Customer
     # should degrade to a cross-package note rather than producing a Ref.
-    gen = Generator(symbols=sample_symbols(), excludes=["Customer"])
+    gen = Diagram(symbols=sample_symbols(), excludes=["Customer"])
     dbml = gen.dbml()
     assert 'Table "dbo"."Customer"' not in dbml
     # The cross-package note path runs when the target table is missing.
@@ -539,19 +540,19 @@ def test_ref_to_filtered_target_degrades_to_note() -> None:
 def test_default_enum_schema_is_meta() -> None:
     # Enums live in their own schema by default ('meta') because BC enums are
     # AL-language metadata, not SQL objects. Separate from the table schema.
-    gen = Generator(symbols=sample_symbols())
+    gen = Diagram(symbols=sample_symbols())
     gen.build()
     assert gen._enums["Customer Type"].schema == "meta"
 
 
 def test_enum_schema_override_is_respected() -> None:
-    gen = Generator(symbols=sample_symbols(), enum_schema="custom")
+    gen = Diagram(symbols=sample_symbols(), enum_schema="custom")
     gen.build()
     assert gen._enums["Customer Type"].schema == "custom"
 
 
 def test_enum_rendered_with_meta_schema_prefix() -> None:
-    dbml = Generator(symbols=sample_symbols()).dbml()
+    dbml = Diagram(symbols=sample_symbols()).dbml()
     assert 'Enum "meta"."Customer Type"' in dbml
     # And the column type that references the enum carries the same prefix
     assert '"Type" "meta"."Customer Type"' in dbml
@@ -560,14 +561,14 @@ def test_enum_rendered_with_meta_schema_prefix() -> None:
 def test_enum_items_carry_ordinal_as_note() -> None:
     # AL omits Ordinal=0; values from the fixture: Person ordinal 0,
     # Company ordinal 1, Government ordinal 10 (from the extension).
-    gen = Generator(symbols=sample_symbols())
+    gen = Diagram(symbols=sample_symbols())
     gen.build()
     items = {i.name: i.note.text for i in gen._enums["Customer Type"].items}
     assert items == {"Person": "0", "Company": "1", "Government": "10"}
 
 
 def test_enum_ordinals_render_in_dbml() -> None:
-    dbml = Generator(symbols=sample_symbols()).dbml()
+    dbml = Diagram(symbols=sample_symbols()).dbml()
     assert "\"Person\" [note: '0']" in dbml
     assert "\"Company\" [note: '1']" in dbml
     assert "\"Government\" [note: '10']" in dbml
@@ -588,7 +589,7 @@ def test_empty_enum_value_substituted_with_single_space() -> None:
             }
         ]
     }
-    gen = Generator(symbols=symbols)
+    gen = Diagram(symbols=symbols)
     gen.build()
     item_names = [i.name for i in gen._enums["Blocked"].items]
     assert item_names == [" ", "Ship", "All"]
@@ -604,7 +605,7 @@ def test_single_space_enum_value_passes_through() -> None:
             }
         ]
     }
-    gen = Generator(symbols=symbols)
+    gen = Diagram(symbols=symbols)
     gen.build()
     item_names = [i.name for i in gen._enums["Type"].items]
     assert item_names == [" ", "Item"]
@@ -616,7 +617,7 @@ def test_enum_extension_empty_value_also_substituted() -> None:
         "EnumTypes": [{"Name": "E", "Values": [{"Name": "A"}]}],
         "EnumExtensionTypes": [{"TargetObject": "E", "Values": [{"Name": ""}, {"Name": "B"}]}],
     }
-    gen = Generator(symbols=symbols)
+    gen = Diagram(symbols=symbols)
     gen.build()
     item_names = [i.name for i in gen._enums["E"].items]
     assert item_names == ["A", " ", "B"]
@@ -646,7 +647,7 @@ def test_self_referential_relation_is_skipped() -> None:
             }
         ]
     }
-    dbml = Generator(symbols=symbols).dbml()
+    dbml = Diagram(symbols=symbols).dbml()
     # No Ref block should be emitted at all
     assert "Ref {" not in dbml
     # The table itself is still present
@@ -654,13 +655,13 @@ def test_self_referential_relation_is_skipped() -> None:
 
 
 def test_filter_drops_tables_from_groups() -> None:
-    gen = Generator(symbols=sample_symbols(), excludes=["Sales*"])
+    gen = Diagram(symbols=sample_symbols(), excludes=["Sales*"])
     dbml = gen.dbml()
     assert 'TableGroup "Sales"' not in dbml
 
 
 def test_dbml_header_works_without_metadata() -> None:
     # The al2dbml version line always appears; missing Name/AppId just drop.
-    dbml = Generator(symbols={"Tables": [{"Name": "T", "Fields": []}]}).dbml()
+    dbml = Diagram(symbols={"Tables": [{"Name": "T", "Fields": []}]}).dbml()
     assert dbml.startswith("// Generated by al2dbml")
     assert "AppId" not in dbml.split("\n", 2)[0]

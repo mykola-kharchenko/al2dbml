@@ -6,7 +6,7 @@ import click
 
 from . import __version__
 from .aldoc import AldocDocs, load_docs
-from .generator import Generator
+from .diagram import Diagram
 from .grouping import GroupingConfig, parse_rule_strings
 
 
@@ -177,7 +177,7 @@ def main(
     needs_render = output is not None or not show_stats
 
     try:
-        generator = Generator.from_app(
+        generator = Diagram.from_app(
             app,
             merge_extensions=merge_extensions,
             grouping=grouping,

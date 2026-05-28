@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from .generator import Generator, generate
+from .diagram import Diagram, Generator, generate
 from .grouping import GroupingConfig
 
 __version__ = "0.5.1"
 
-__all__ = ["Generator", "GroupingConfig", "__version__", "generate"]
+# 'Generator' is a deprecated alias for 'Diagram'; remove in 0.7.0.
+__all__ = ["Diagram", "Generator", "GroupingConfig", "__version__", "generate"]

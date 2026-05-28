@@ -3,7 +3,7 @@
 Pure string-level parsers that extract structured tuples from the raw AL
 ``TableRelation`` property forms. Used by the generator's reference resolution
 stage; isolated here so each parser can be tested without instantiating a
-whole :class:`~al2dbml.generator.Generator`.
+whole :class:`~al2dbml.diagram.Diagram`.
 
 The shapes we handle:
 
