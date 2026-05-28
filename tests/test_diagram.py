@@ -212,6 +212,45 @@ def test_no_aldoc_docs_preserves_existing_caption_behaviour() -> None:
     assert "Description text from aldoc" not in dbml
 
 
+def test_column_note_section_order_caption_then_condition_then_references() -> None:
+    # When a single column triggers multiple note sections (caption that
+    # differs from name + WHERE condition + cross-package reference), they
+    # join with the '<br><br>' paragraph separator in a stable order:
+    #   caption  →  Condition  →  References
+    # If a future refactor reorders the sections, this catches it.
+    symbols = {
+        "Tables": [
+            {
+                "Name": "T",
+                "Fields": [
+                    {
+                        "Name": "fld",
+                        "TypeDefinition": {"Name": "Code", "TypeArguments": [20]},
+                        "Properties": [
+                            {"Name": "Caption", "Value": "Friendly Label"},
+                            {
+                                "Name": "TableRelation",
+                                "Value": 'Missing."x" WHERE("y"=CONST(true))',
+                            },
+                        ],
+                    }
+                ],
+                "Keys": [{"FieldNames": ["fld"]}],
+            }
+        ]
+    }
+    dbml = Diagram(symbols=symbols).dbml()
+    # Extract just this field's note line and verify all three sections
+    # appear in that order on one physical line.
+    note_line = next(line for line in dbml.splitlines() if '"fld"' in line)
+    caption_pos = note_line.index("Friendly Label")
+    condition_pos = note_line.index("**Condition:**")
+    refs_pos = note_line.index("**References**")
+    assert caption_pos < condition_pos < refs_pos, note_line
+    # And the separators between sections are the paragraph '<br><br>'
+    assert note_line.count("<br><br>") >= 2
+
+
 def test_caption_equal_to_name_is_not_emitted_as_note() -> None:
     # 96% of Base Application fields have caption == name; emitting that as
     # a note is pure noise. Only different captions should appear.

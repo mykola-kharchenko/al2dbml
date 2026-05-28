@@ -24,6 +24,17 @@ def test_normalize_plain_dict_passes_through() -> None:
     assert result is not raw  # shallow copy
 
 
+def test_normalize_returned_dict_is_isolated_from_input() -> None:
+    # Pins the shallow-copy contract from the docstring: mutating the
+    # returned dict must not bleed back into the input dict.
+    raw = {"Caption": "Customer"}
+    result = normalize(raw)
+    result["new_key"] = "added"
+    assert "new_key" not in raw
+    del result["Caption"]
+    assert raw == {"Caption": "Customer"}
+
+
 def test_normalize_list_of_name_value_dicts() -> None:
     # Current AL compiler shape (BC v25+).
     raw = [
