@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydbml.classes import Table
 
 from .context import BuildContext
-from .tables import build_column
+from .tables import TableBuilder
 
 
 class ExtensionBuilder:
@@ -38,7 +38,7 @@ class ExtensionBuilder:
                 ctx.tables[target] = table
                 ctx.db.add(table)
             for f in ext.get("Fields") or []:
-                col = build_column(ctx, target, f, set())
+                col = TableBuilder.build_column(ctx, target, f, set())
                 if col is not None:
                     table.add_column(col)
                     ctx.columns[(target, col.name)] = col
@@ -56,7 +56,7 @@ class ExtensionBuilder:
                 note=f"Extension of {target}",
             )
             for f in ext.get("Fields") or []:
-                col = build_column(ctx, stub_name, f, set())
+                col = TableBuilder.build_column(ctx, stub_name, f, set())
                 if col is not None:
                     stub.add_column(col)
                     ctx.columns[(stub_name, col.name)] = col
