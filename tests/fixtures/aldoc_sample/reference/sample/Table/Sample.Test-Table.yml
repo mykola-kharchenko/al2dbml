@@ -1,0 +1,31 @@
+### YamlMime:BusinessCentralApplicationObject
+fqName: Table Sample."Test Table"
+alId: ID 50000
+namespace: Sample
+baseKind: Table
+kind: Table
+parent: N:Module::Sample::Namespace::Sample
+fields:
+- description: Specifies the unique number of the record.
+  type:
+    name: Code[20]
+    isExternal: true
+  name: '"No."'
+  uid: F:Table::Sample#Test_Table.No#[20]
+- description: >-
+    A multi-line description.
+
+    With additional context on a second paragraph.
+  type:
+    name: Text[100]
+    isExternal: true
+  name: '"Description"'
+  uid: F:Table::Sample#Test_Table.Description[100]
+- type:
+    name: Boolean
+    isExternal: true
+  name: '"Flag No Description"'
+  uid: F:Table::Sample#Test_Table.Flag_No_Description
+summary: A test table for fixtures.
+name: '"Test Table"'
+uid: O:Table::Sample#Test_Table

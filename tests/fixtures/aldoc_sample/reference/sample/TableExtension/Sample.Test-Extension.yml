@@ -1,0 +1,20 @@
+### YamlMime:BusinessCentralApplicationObject
+fqName: TableExtension Sample."Test Extension"
+alId: ID 50002
+namespace: Sample
+baseKind: Table
+kind: TableExtension
+parent: N:Module::Sample::Namespace::Sample
+extends:
+  internalReference: O:Table::Sample#Test_Table
+  name: Sample."Test Table"
+  isExternal: false
+fields:
+- description: A field added by an extension; ends up indexed under the base table.
+  type:
+    name: Code[10]
+    isExternal: true
+  name: '"Extra Code"'
+  uid: F:TableExtension::Sample#Test_Extension.Extra_Code
+name: '"Test Extension"'
+uid: O:TableExtension::Sample#Test_Extension

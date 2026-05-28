@@ -41,6 +41,7 @@ classifiers = [
 dependencies = [
     "click>=8.1",
     "pydbml>=1.2.0",
+    "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]

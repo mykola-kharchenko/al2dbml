@@ -1,0 +1,15 @@
+### YamlMime:BusinessCentralApplicationObject
+fqName: Table "Legacy Table"
+alId: ID 50001
+baseKind: Table
+kind: Table
+parent: 'N:Module::Sample::Namespace::'
+fields:
+- description: An old-style field on a non-namespaced legacy table.
+  type:
+    name: Integer
+    isExternal: true
+  name: '"Counter"'
+  uid: F:Table::Legacy_Table.Counter
+name: '"Legacy Table"'
+uid: O:Table::Legacy_Table
