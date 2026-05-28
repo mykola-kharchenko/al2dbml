@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import click
 
 from . import __version__
 from .aldoc import AldocDocs, load_docs
 from .diagram import Diagram
-from .grouping import GroupingConfig, parse_rule_strings
+from .grouping import GroupingConfig, GroupSource, parse_rule_strings
 
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
@@ -151,11 +152,11 @@ def main(
     except ValueError as exc:
         raise click.BadParameter(str(exc), param_hint="-g/--group") from exc
 
-    source = "none" if no_auto_groups else group_by.lower()
+    source = cast(GroupSource, "none" if no_auto_groups else group_by.lower())
     grouping = GroupingConfig(
         enabled=not no_groups,
         rules=rules,
-        source=source,  # type: ignore[arg-type]
+        source=source,
         min_group_size=min_group_size,
     )
 

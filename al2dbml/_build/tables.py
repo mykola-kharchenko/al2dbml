@@ -38,12 +38,9 @@ class TableBuilder:
         caption = props.get("Caption")
         # aldoc summary (sourced from AL /// <summary> doc comments) is
         # strictly richer prose than the bare Caption; prefer it when present.
+        # pydbml.Table(note=None) is equivalent to omitting the kwarg.
         table_note = ctx.config.docs.table_summaries.get(name) or caption
-        table = (
-            Table(name=name, schema=ctx.config.table_schema, note=table_note)
-            if table_note
-            else Table(name=name, schema=ctx.config.table_schema)
-        )
+        table = Table(name=name, schema=ctx.config.table_schema, note=table_note)
 
         keys = table_def.get("Keys") or []
         pk_names: set[str] = set()

@@ -117,6 +117,13 @@ class Diagram:
         for inspection without leaking the dataclass implementation detail
         of ``_ctx`` directly.
 
+        **Empty before ``build()``**: the collections (``context.tables``,
+        ``context.enums``, etc.) are populated by the pipeline phases that
+        :meth:`build` runs. Accessing ``context.tables`` before calling
+        ``build()`` returns an empty dict, not the tables in the source
+        ``.app`` — call ``build()`` (or any of the methods that invoke it
+        like ``dbml()`` or ``stats()``) first.
+
         The property has no setter, so ``diagram.context = ...`` raises
         :class:`AttributeError`. To rebuild against different inputs,
         construct a new :class:`Diagram` instance.

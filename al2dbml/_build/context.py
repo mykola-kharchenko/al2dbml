@@ -31,11 +31,11 @@ class _PendingRef:
 
 @dataclass
 class BuildConfig:
-    """Immutable configuration knobs for one build pipeline pass.
+    """Configuration knobs for one build pipeline pass.
 
-    Bundles every user-facing setting that controls how a ``Generator``
-    transforms symbols into a DBML database. The set of fields here is the
-    same as the corresponding subset of the ``Generator`` dataclass.
+    Bundles every user-facing setting that controls how a :class:`Diagram`
+    transforms symbols into a DBML database. The set of fields here mirrors
+    the corresponding subset of the :class:`Diagram` dataclass.
     """
 
     merge_extensions: bool = True

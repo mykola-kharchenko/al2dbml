@@ -1,3 +1,24 @@
+"""Load AL-language documentation from an ``aldoc generate`` output tree.
+
+``aldoc`` (Microsoft's official AL documentation generator, bundled with the
+AL Language VS Code extension) parses ``.al`` source via the real AL compiler
+frontend and emits a docfx-compatible directory of per-object YAML files. We
+consume the ``Table`` and ``TableExtension`` subtrees to extract two indexes
+that the generator uses to enrich the rendered DBML:
+
+- ``AldocDocs.table_summaries`` — table name -> top-level ``summary`` prose,
+  rendered as a ``Note { ... }`` body on the corresponding DBML ``Table``.
+- ``AldocDocs.field_descriptions`` — ``(table, field)`` -> per-field
+  ``description`` text (derived by aldoc from AL ``ToolTip`` and
+  ``/// <summary>`` XML doc comments), rendered as the leading section of
+  the column's ``[note: ...]`` block.
+
+Coverage is uneven in real BC packages — active-document tables like
+``Sales Header`` are richly documented; history / buffer / setup tables
+often have nothing. Where aldoc has no entry, the generator falls back to
+its existing caption-based logic.
+"""
+
 from __future__ import annotations
 
 import re
@@ -8,6 +29,13 @@ from typing import Any
 import yaml
 
 _QUOTED_NAME_RE = re.compile(r'"([^"]+)"')
+
+# UTF-8 byte order mark (U+FEFF). aldoc prefixes every YAML file with one,
+# and PyYAML's safe_load doesn't strip it consistently across versions, so
+# we trim it ourselves before parsing. Kept as a named constant — and
+# constructed via chr() so the source is visibly self-documenting rather
+# than holding a literal U+FEFF that renders as an empty character.
+_UTF8_BOM = chr(0xFEFF)
 
 
 @dataclass
@@ -141,7 +169,7 @@ def _safe_load(yml_path: Path) -> Any:
         text = yml_path.read_text(encoding="utf-8")
     except OSError:
         return None
-    if text.startswith("﻿"):
+    if text.startswith(_UTF8_BOM):
         text = text[1:]
     try:
         return yaml.safe_load(text)
