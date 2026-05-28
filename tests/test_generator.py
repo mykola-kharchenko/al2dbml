@@ -127,6 +127,62 @@ def test_cross_package_references_are_deduped_per_column() -> None:
     assert dbml.count("(cross-package)") == 1
 
 
+def test_aldoc_table_summary_becomes_table_note() -> None:
+    from al2dbml.aldoc import AldocDocs
+
+    docs = AldocDocs(table_summaries={"Customer": "Stores customer master data."})
+    dbml = Generator(symbols=sample_symbols(), docs=docs).dbml()
+    # The Table block gains a Note { ... } body sourced from aldoc, replacing
+    # the bare 'Customer' caption that was used before.
+    assert "Stores customer master data." in dbml
+
+
+def test_aldoc_field_description_replaces_caption_in_column_note() -> None:
+    from al2dbml.aldoc import AldocDocs
+
+    docs = AldocDocs(field_descriptions={("Customer", "Email"): "Primary contact email."})
+    dbml = Generator(symbols=sample_symbols(), docs=docs).dbml()
+    # The aldoc description takes the column-note slot
+    assert "Primary contact email." in dbml
+
+
+def test_aldoc_description_takes_priority_over_caption() -> None:
+    from al2dbml.aldoc import AldocDocs
+
+    # Email field in the fixture has caption that differs from name; without
+    # aldoc it would render as the caption. With aldoc the description wins.
+    symbols = {
+        "Tables": [
+            {
+                "Name": "T",
+                "Fields": [
+                    {
+                        "Name": "x",
+                        "TypeDefinition": {"Name": "Integer"},
+                        "Properties": [{"Name": "Caption", "Value": "Caption text"}],
+                    }
+                ],
+                "Keys": [{"FieldNames": ["x"]}],
+            }
+        ]
+    }
+    docs = AldocDocs(field_descriptions={("T", "x"): "Description text from aldoc."})
+    dbml = Generator(symbols=symbols, docs=docs).dbml()
+    assert "Description text from aldoc." in dbml
+    assert "Caption text" not in dbml
+
+
+def test_no_aldoc_docs_preserves_existing_caption_behaviour() -> None:
+    # When docs is the default empty AldocDocs, captions still appear when
+    # they differ from the field name (existing behaviour, not regressed).
+    dbml = Generator(symbols=sample_symbols()).dbml()
+    # Customer is the only fixture table with a caption that equals its name
+    # for every field; the rendered DBML should be unchanged from pre-aldoc.
+    assert "Customer" in dbml
+    # And we have NOT accidentally pulled in any aldoc description text.
+    assert "Description text from aldoc" not in dbml
+
+
 def test_caption_equal_to_name_is_not_emitted_as_note() -> None:
     # 96% of Base Application fields have caption == name; emitting that as
     # a note is pure noise. Only different captions should appear.

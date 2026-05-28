@@ -8,6 +8,7 @@ from typing import Any
 from pydbml import Database
 from pydbml.classes import Column, Enum, EnumItem, Note, Reference, Table
 
+from .aldoc import AldocDocs
 from .grouping import GroupingConfig, build_table_groups
 from .symbols import load_symbols
 from .types import map_al_type
@@ -51,6 +52,7 @@ class Generator:
     enum_schema: str = "meta"
     includes: list[str] = field(default_factory=list)
     excludes: list[str] = field(default_factory=list)
+    docs: AldocDocs = field(default_factory=AldocDocs)
     db: Database = field(default_factory=Database)
 
     _enums: dict[str, Enum] = field(init=False, default_factory=dict)
@@ -210,9 +212,12 @@ class Generator:
         name = table_def["Name"]
         props = self._properties(table_def.get("Properties"))
         caption = props.get("Caption")
+        # aldoc summary (sourced from AL /// <summary> doc comments) is
+        # strictly richer prose than the bare Caption; prefer it when present.
+        table_note = self.docs.table_summaries.get(name) or caption
         table = (
-            Table(name=name, schema=self.table_schema, note=caption)
-            if caption
+            Table(name=name, schema=self.table_schema, note=table_note)
+            if table_note
             else Table(name=name, schema=self.table_schema)
         )
 
@@ -268,11 +273,21 @@ class Generator:
         col = Column(name=fname, type=col_type, pk=is_pk, not_null=not_null)
 
         notes_parts: list[str] = []
+
+        # aldoc description (when --docs supplies one) is the richest prose
+        # available: it comes from the AL ToolTip property and /// XML doc
+        # comments parsed by the real AL compiler. It takes priority over
+        # Caption, which is then suppressed entirely as redundant.
+        aldoc_description = self.docs.field_descriptions.get((table_name, fname))
+        if aldoc_description:
+            notes_parts.append(aldoc_description)
+
         caption = field_props.get("Caption")
-        # Skip caption when it just restates the field name: ~96% of Base
-        # Application fields have caption == name so adding it would just
-        # double the visible text without conveying new information.
-        if caption and str(caption) != fname:
+        # Skip caption when it just restates the field name (~96% of Base
+        # Application fields), and also when an aldoc description has already
+        # claimed the leading slot. Otherwise the caption stays as a fallback
+        # note when nothing richer is available.
+        if not aldoc_description and caption and str(caption) != fname:
             notes_parts.append(str(caption))
 
         relation = field_props.get("TableRelation") or field_def.get("TableRelation")
