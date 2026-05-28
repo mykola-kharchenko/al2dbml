@@ -7,7 +7,7 @@ from typing import Any
 from pydbml import Database
 from pydbml.classes import Column, Enum, EnumItem, Note, Reference, Table
 
-from . import relations
+from . import properties, relations
 from .aldoc import AldocDocs
 from .grouping import GroupingConfig, build_table_groups
 from .symbols import load_symbols
@@ -204,7 +204,7 @@ class Generator:
 
     def _make_table(self, table_def: dict[str, Any]) -> Table:
         name = table_def["Name"]
-        props = self._properties(table_def.get("Properties"))
+        props = properties.normalize(table_def.get("Properties"))
         caption = props.get("Caption")
         # aldoc summary (sourced from AL /// <summary> doc comments) is
         # strictly richer prose than the bare Caption; prefer it when present.
@@ -259,7 +259,7 @@ class Generator:
                 col_type = self._enums[subtype_name]
 
         is_pk = fname in pk_names
-        field_props = self._properties(field_def.get("Properties"))
+        field_props = properties.normalize(field_def.get("Properties"))
         # AL spells the non-nullable signal as 'NotBlank'; tolerate 'NotNull' too.
         # DBML PK already implies not-null, so don't double-mark PK columns.
         not_null = not is_pk and bool(field_props.get("NotBlank") or field_props.get("NotNull"))
@@ -499,20 +499,8 @@ class Generator:
         # to continuation lines, which Markdown then treats as a code block.
         col.note = Note(f"{existing}<br><br>{line}" if existing else line)
 
-    @staticmethod
-    def _properties(raw: Any) -> dict[str, Any]:
-        """Normalise an AL ``Properties`` field, which may be a list or a dict."""
-        if not raw:
-            return {}
-        if isinstance(raw, dict):
-            return dict(raw)
-        if isinstance(raw, list):
-            out: dict[str, Any] = {}
-            for item in raw:
-                if isinstance(item, dict) and "Name" in item:
-                    out[item["Name"]] = item.get("Value")
-            return out
-        return {}
+    # Thin shim kept for tests / external callers reaching the static name.
+    _properties = staticmethod(properties.normalize)
 
     # Thin shims that defer to the al2dbml.relations module; kept on the
     # class so existing tests that reach Generator._parse_* continue to work
